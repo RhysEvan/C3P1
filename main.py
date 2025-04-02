@@ -10,15 +10,15 @@ import inspect
 import numpy as np
 
 try:
-    from camera_toolbox_python.CameraModel.GenICam.GenICamCamera import GenICamCamera
+    from CameraModel.GenICam.GenICamCamera import GenICamCamera
 except:
     print("no luck with module")
 import StructuredLight.Graycode as slg
 import Calibration as cg
 import Calibration as ci
-import Calibration as ct
+import Calibration as ct  
 import DataCapture as dc
-import Triangulation.Triangulation as tl
+import Triangulation as tl
 
 from inputparameters import PROJECTOR_DIRECTORY
 from inputparameters import CALIBRATION_DATA_DIRECTORY, INTRINSIC_CALIBRATION_DATA_DIRECTORY, \

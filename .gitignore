@@ -91,3 +91,7 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 Examples/static/
+
+.idea/git_toolbox_prj.xml
+.idea/C3P1.iml
+.idea/misc.xml
