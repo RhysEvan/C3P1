@@ -1,0 +1,27 @@
+settings:
+    cam:
+        l_id: "2BA200003744"
+        r_id: "2BA200003745"
+        com_port: "COM3"
+        gain: 3
+        fixed_width: 800
+        dim:
+            width: 640
+            height: 480
+    
+    exposure:
+        default: 2500
+        intrinsic: 75000
+        intrinsic_default: 100000
+        procam: 20000
+    
+    cal:
+        image_count_intrinsic: 40
+        image_count_stereo_calib: 20
+        steps_cal: 4
+        steps_scan: 4
+    
+    path:
+        pattern_folder: "./static/0_projection_pattern/"
+        capture_folder: "./static/1_calibration_data/"
+        object_path: ".\static\2_object_data\Seppe/"

@@ -1,0 +1,3 @@
+The files present in this folder should either be 
+files that will be removed or images temporarily stored
+for computational processing later on in the project.
