@@ -8,17 +8,13 @@ import h5py
 import glob
 import inspect
 import numpy as np
-
-try:
-    from CameraModel.GenICam.GenICamCamera import GenICamCamera
-except:
-    print("no luck with module")
 import StructuredLight.Graycode as slg
-import Calibration as cg
-import Calibration as ci
-import Calibration as ct  
+import Calibration.GraycodeCalibration as cg
+import Calibration.IntrinsicCalirbration as ci
+import Calibration.TurnTableCalibration as ct
 import DataCapture as dc
 import Triangulation as tl
+import config.config as cfg
 
 from inputparameters import PROJECTOR_DIRECTORY
 from inputparameters import CALIBRATION_DATA_DIRECTORY, INTRINSIC_CALIBRATION_DATA_DIRECTORY, \
@@ -29,15 +25,21 @@ from inputparameters import CHESS_SHAPE, CHESS_BLOCK_SIZE
 from inputparameters import SQUARES_X, SQUARES_Y
 from inputparameters import SQUARES_LENGTH, MARKER_LENGTH
 
+try:
+    from CameraModel.GenICam.GenICamCamera import GenICamCamera
+except:
+    print("no luck with module")
 
-class Mapping():
+
+class Mapping:
     """
     class initiation to execute a 3d scan
     """
-    #TODO: yaml magic
+
     def __init__(self, folder_name_pattern, cameras, texture_camera, dimensions, folder_name_capture,
-                 range_steps_calib, range_steps_scan, com_port='COM4', obj_path=None, exposure=2500,
-                 exposure_intrinsic=100000):
+                 range_steps_calib, range_steps_scan, com_port=cfg.com_port_default, obj_path=None,
+                 exposure=cfg.exposure_default,
+                 exposure_intrinsic=cfg.exposure_intrinsic_default):
         self.decoder = slg.Decode_Gray()
 
         ##########################################################################################
@@ -67,7 +69,6 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         except:
             print("")
 
-        calibrated_data = []
         calibrated_data = glob.glob(INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/*_scan.h5")
 
         if len(calibrated_data) == 0:
@@ -75,7 +76,6 @@ Use the camera windows to align the camera's to the best of you capabilities wit
                                              cameras, texture_camera,
                                              identifier=["L", "R"])
 
-        calibrated_data = []
         calibrated_data = glob.glob(INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/*parameters.h5")
         if len(calibrated_data) == 0:
             self.intrinsic_calibration()
@@ -90,7 +90,6 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         ################# rotations and translations calibration procedure #######################
         ##########################################################################################
 
-        calibrated_data = []
         calibration_data = glob.glob(CALIBRATION_DATA_DIRECTORY + "/*.h5")
         if len(calibration_data) == 0:
             time_hold = input("turn on projector then press enter")
@@ -98,7 +97,6 @@ Use the camera windows to align the camera's to the best of you capabilities wit
                 dc.graycode_data_capture(folder_name_pattern, cameras, texture_camera,
                                          dimensions, folder_name_capture, 0)
 
-        calibrated_data = []
         calibrated_data = glob.glob(CALIBRATION_DATA_DIRECTORY + "/*parameters.h5")
         if len(calibrated_data) == 0:
             self.stereo_calibration()
@@ -107,7 +105,6 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         ######################## turntable calibration procedure #################################
         ##########################################################################################
 
-        calibrated_data = []
         calibrated_data = glob.glob(TURNTABLE_CALIBRATION_DATA_DIRECTORY + "/scan.h5")
         input("please turn off projector")
         if len(calibrated_data) == 0:
@@ -115,7 +112,6 @@ Use the camera windows to align the camera's to the best of you capabilities wit
             cameras[1].SetParameterDouble("ExposureTime", exposure_intrinsic)
             dc.turntable_calibration_capture(cameras, TURNTABLE_CALIBRATION_DATA_DIRECTORY, range_steps_calib, com_port)
 
-        calibrated_data = []
         calibrated_data = glob.glob(TURNTABLE_CALIBRATION_DATA_DIRECTORY + "/*matrix_data.h5")
         if len(calibrated_data) == 0:
             self.turntable_calibration()
@@ -125,7 +121,6 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         except:
             print("")
 
-        calibrated_data = []
         calibrated_data = glob.glob(obj_path + "*.h5")
         input("please turn on projector")
         if len(calibrated_data) == 0:
@@ -189,8 +184,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         """
         Execute calibration
         """
-        #TODO: yaml magic
-        image_count = 40
+        image_count = cfg.cal_image_count_intrinsic
         frame_list = list(range(image_count))
         self.intrinsic_calibration_L = self.quality_optimisation(
             ci.IntrisicCalibration,
@@ -240,8 +234,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         cam_int_L, cam_dist_L = self.load_parameters(h5_path_L)
         cam_int_R, cam_dist_R = self.load_parameters(h5_path_R)
 
-        #TODO: yaml magic
-        image_count = 20
+        image_count = cfg.cal_image_count_stereo_cal
         frame_list = list(range(image_count))
 
         self.calib_mono_left = self.quality_optimisation(
@@ -396,42 +389,43 @@ def save_selected_frames(type_format, identifier, frame_list):
 
 
 if __name__ == "__main__":
-    #TODO: yaml magic
-    folder_name_pattern = r"./static/0_projection_pattern/"
-    folder_name_capture = r"./static/1_calibration_data/"
-    OBJECT_PATH = r'.\static\2_object_data\Seppe/'
+    folder_name_pattern = cfg.patterns_folder
+    folder_name_capture = cfg.capture_folder
+    OBJECT_PATH = cfg.object_path
 
-    #TODO: yaml magic
-    range_steps_calib = 4  # 1 if no turn table
-    range_steps_scan = 4  # 1 if no turn table
-    com_port = 'COM3'
+    range_steps_calib = cfg.steps_cal  # 1 if no turn table
+    range_steps_scan = cfg.steps_scan  # 1 if no turn table
+    com_port = cfg.com_port
 
-    #TODO: yaml magic
-    gain = 3
-    exposure_intrinsic = 75000
-    exposure_procam = 20000
+    gain = cfg.gain
+    exposure_intrinsic = cfg.exposure_intrinsic
+    exposure_procam = cfg.exposure_procam
     try:
-        #TODO: yaml magic
-        camera_id = "2BA200003744"
-        cam_l = GenICamCamera('pleora')
-        cam_l.Open(camera_id)
+        cameras = []
+        camera_ids = [cfg.cam1_id, cfg.cam2_id]
 
-        #TODO: yaml magic
-        camera_id = "2BA200003745"
-        cam_r = GenICamCamera('pleora')
-        cam_r.Open(camera_id)
-
-        cameras = [cam_l, cam_r]
-
-        for cam in cameras:
+        for camera_id in camera_ids:
+            cam = GenICamCamera(cfg.cam_interface)
+            cam.Open(camera_id)
             cam.SetParameterDouble("ExposureTime", exposure_procam)
             cam.SetParameterDouble("Gain", gain)
             cam.Start()
+            cameras.append(cam)
 
-        #TODO: yaml magic
-        fixed_width = 800
-        frame_l = cam_l.GetFrame()
-        frame_r = cam_r.GetFrame()
+        # Get camera dimensions for fixed width calculation
+        fixed_width = cfg.cam_fixed_width
+        dimensions = []
+
+        for cam in cameras:
+            frame = cam.GetFrame()
+            h, w = frame.shape[:2]
+            ratio = fixed_width / float(w)
+            dim = (fixed_width, int(h * ratio))
+            dimensions.append(dim)
+
+        fixed_width = cfg.cam_fixed_width
+        frame_l = cameras[0].GetFrame()
+        frame_r = cameras[1].GetFrame()
         (h_l, w_l) = frame_l.shape[:2]
         (h_r, w_r) = frame_r.shape[:2]
 
@@ -444,8 +438,7 @@ if __name__ == "__main__":
         print(dimensions)
     except:
         cameras = []
-        #TODO: yaml magic
-        dimensions = [(640, 480), (640, 480)]
+        dimensions = [(cfg.cam_default_width, cfg.cam_default_height), (cfg.cam_default_width, cfg.cam_default_height)]
 
     texture_camera = cv2.VideoCapture(0)  # 0 for the default camera
 
@@ -464,4 +457,3 @@ if __name__ == "__main__":
             cam.Stop()
             cam.Close()
     print("done :)")
-    

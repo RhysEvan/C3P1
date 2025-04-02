@@ -11,13 +11,15 @@ exposure_intrinsic = config['settings']['exposure']['intrinsic']
 exposure_procam = config['settings']['exposure']['procam']
 
 # Camera
-camL_id = config['settings']['cam']['l_id']
-camR_id = config['settings']['cam']['r_id']
+cam1_id = config['settings']['cam']['id'][0]
+cam2_id = config['settings']['cam']['id'][1]
 com_port = config['settings']['cam']['com_port']
+com_port_default = config['settings']['cam']['com_port_default']
 gain = config['settings']['cam']['gain']
 cam_fixed_width = config['settings']['cam']['fixed_width']
 cam_default_width = config['settings']['cam']['dim']['width']
 cam_default_height = config['settings']['cam']['dim']['height']
+cam_interface = config['settings']['cam']['interface']
 
 # Calibration
 cal_image_count_intrinsic = config['settings']['cal']['image_count_intrinsic']

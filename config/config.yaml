@@ -1,13 +1,16 @@
 settings:
     cam:
-        l_id: "2BA200003744"
-        r_id: "2BA200003745"
+        id:
+            0: "2BA200003744"
+            1: "2BA200003745"
         com_port: "COM3"
+        com_port_default: "COM4"
         gain: 3
         fixed_width: 800
         dim:
             width: 640
             height: 480
+        interface: "pleora"
     
     exposure:
         default: 2500
