@@ -138,7 +138,7 @@ class Decode_Gray():
         return np.squeeze(img_bin)
 
 
-@njit(parallel=True, cache=True, fastmath=True)
+@njit(parallel=True, cache=True)
 def decode_process_jit(instance_np, instance_inverse_np):
     """
     Process in which all graycode frames are used to mathematically determine
