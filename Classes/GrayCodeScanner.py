@@ -20,14 +20,15 @@ try:
 except:
     print("no luck with module")
 from StructuredLight.Graycode import ProjectionPattern, Decode_Gray
-from Calibration import MonoCalibration, StereoCalibration
-from Calibration import IntrisicCalibration
-from Calibration import TurnTableCalibration
+import Calibration.GraycodeCalibration as cg
+import Calibration.IntrinsicCalirbration as ci
+import Calibration.TurnTableCalibration as ct
 from DataCapture import innitiate_support
 from DataCapture import graycode_data_capture
 from DataCapture import intrinsic_calibration_capture
 from DataCapture import turntable_calibration_capture
-from Triangulation.Triangulation import MonoTriangulator, StereoTriangulator
+from Triangulation import MonoTriangulator, StereoTriangulator
+import json
 
 from inputparameters import PROJECTOR_DIRECTORY
 from inputparameters import CALIBRATION_DATA_DIRECTORY, INTRINSIC_CALIBRATION_DATA_DIRECTORY, TURNTABLE_CALIBRATION_DATA_DIRECTORY
@@ -122,7 +123,6 @@ class GrayCodeScanner:
         """
 
         #0705 todo make/set  a class variable for the exposures.
-        from CameraModel import GenICamCamera
 
         cameras = []
         for dev_id, exposure in zip(device_ids, exposures):
@@ -144,8 +144,6 @@ class GrayCodeScanner:
         :param file: string to file (json) with camera info
         :return: none
         """
-        import json
-        from CameraModel import GenICamCamera
 
         # Load the JSON file
         with open(file, 'r') as json_file:
@@ -227,7 +225,7 @@ class GrayCodeScanner:
         """
         image_count = self.image_count_calibration
         frame_list = list(range(image_count))
-        self.intrinsic_calibration_L = self.quality_optimisation(IntrisicCalibration,frame_list,
+        self.intrinsic_calibration_L = self.quality_optimisation(ci.IntrisicCalibration,frame_list,
             INTRINSIC_CALIBRATION_DATA_DIRECTORY,
             CHESS_SHAPE,
             CHESS_BLOCK_SIZE,
@@ -240,7 +238,7 @@ class GrayCodeScanner:
             )
 
         self.intrinsic_calibration_R = self.quality_optimisation(
-            IntrisicCalibration,
+            ci.IntrisicCalibration,
             frame_list,
             INTRINSIC_CALIBRATION_DATA_DIRECTORY,
             CHESS_SHAPE,
@@ -255,7 +253,7 @@ class GrayCodeScanner:
 
         if self.texture_camera is not None:
             self.intrinsic_calibration_RGB = self.quality_optimisation(
-                IntrisicCalibration,
+                ci.IntrisicCalibration,
                 frame_list,
                 INTRINSIC_CALIBRATION_DATA_DIRECTORY,
                 CHESS_SHAPE,
@@ -331,7 +329,7 @@ class GrayCodeScanner:
         frame_list = list(range(image_count))
 
         self.calib_mono_left = self.quality_optimisation(
-            MonoCalibration,
+            cg.MonoCalibration,
             frame_list,
             self.decoder,
             CALIBRATION_DATA_DIRECTORY,
@@ -345,7 +343,7 @@ class GrayCodeScanner:
         )
 
         self.calib_mono_right = self.quality_optimisation(
-            MonoCalibration,
+            cg.MonoCalibration,
             frame_list,
             self.decoder,
             CALIBRATION_DATA_DIRECTORY,
@@ -358,7 +356,7 @@ class GrayCodeScanner:
             format_type = "mono_"
         )
 
-        self.calib_stereo = StereoCalibration(self.decoder,
+        self.calib_stereo = cg.StereoCalibration(self.decoder,
                                               CALIBRATION_DATA_DIRECTORY,
                                               CHESS_SHAPE,
                                               CHESS_BLOCK_SIZE)
@@ -417,12 +415,12 @@ class GrayCodeScanner:
         cam_int_L, cam_dist_L = self.load_parameters(h5_path_L)
         cam_int_R, cam_dist_R = self.load_parameters(h5_path_R)
 
-        turntable_L = TurnTableCalibration(self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_L,
+        turntable_L = ct.TurnTableCalibration(self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_L,
                                            cam_dist_L, SQUARES_X, SQUARES_Y, SQUARES_LENGTH,
                                            MARKER_LENGTH, "L")
         turntable_L.calibrate()
 
-        turntable_R = TurnTableCalibration(self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_R,
+        turntable_R = ct.TurnTableCalibration(self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_R,
                                            cam_dist_R, SQUARES_X, SQUARES_Y, SQUARES_LENGTH,
                                            MARKER_LENGTH, "R")
         turntable_R.calibrate()

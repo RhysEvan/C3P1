@@ -27,4 +27,8 @@ settings:
     path:
         pattern_folder: "./static/0_projection_pattern/"
         capture_folder: "./static/1_calibration_data/"
-        object_path: ".\static\2_object_data\Seppe/"
+        object_path: "./static/2_object_data/Seppe/"
+        
+    decoder:
+        threshold: 55
+        maxvalue: 255

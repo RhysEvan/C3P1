@@ -3,7 +3,7 @@ import h5py
 import cv2 as cv
 import numpy as np
 import open3d as o3d
-from PyCamCalib.core.calibration import StereoParameters
+# from PyCamCalib.core.calibration import StereoParameters
 
 
 class StereoTriangulator():

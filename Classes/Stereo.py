@@ -3,7 +3,11 @@ import numpy as np
 import h5py
 import os
 import matplotlib.pyplot as plt
-from PyCamCalib.core.calibration import *
+
+from calibration_toolbox_python.src.PyCamCalib.core.CameraParameters import CameraParameters
+from calibration_toolbox_python.src.PyCamCalib.core.calibration import *
+from core_toolbox_python.Transformation.TransformationMatrix import TransformationMatrix
+
 
 class Stereo:
     """
@@ -246,8 +250,8 @@ if __name__ == "__main__":
     matplotlib.use('tkagg')
 
     stereo = Stereo()
-    #stereo.calibrate_camera_intrinsics(r"../Examples/static/1_calibration_data/intrinsic")
+    stereo.calibrate_camera_intrinsics(r"../Examples/static/1_calibration_data/intrinsic")
     stereo.load_intrinsic_calibration(r"../Examples/static/1_calibration_data/intrinsic")
     stereo.calibrate_camera_extrinsics(r"../Examples/static/1_calibration_data/extrinsic",r"../Examples/static/1_calibration_data/intrinsic")
-    #stereo.load_extrinsic_calibration()
+    stereo.load_extrinsic_calibration()
     pass

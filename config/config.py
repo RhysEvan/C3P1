@@ -1,7 +1,12 @@
+import os
 import yaml
 
-with open("config.yaml", "r") as file:
+base_path = os.path.dirname(os.path.abspath(__file__))
+config_path = os.path.join(base_path, "config.yaml")
+
+with open(config_path, "r") as file:
     config = yaml.safe_load(file)
+
 
 #load the config file
 # Exposure
@@ -28,7 +33,10 @@ steps_cal = config['settings']['cal']['steps_cal']
 steps_scan = config['settings']['cal']['steps_scan']
 
 # Paths
-patterns_folder = config['settings']['path']['patterns_folder']
+patterns_folder = config['settings']['path']['pattern_folder']
 capture_folder = config['settings']['path']['capture_folder']
 object_path = config['settings']['path']['object_path']
 
+# Decoder
+decoder_threshold = config['settings']['decoder']['threshold']
+decoder_maxvalue = config['settings']['decoder']['maxvalue']

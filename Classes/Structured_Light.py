@@ -1,4 +1,4 @@
-from Classes.Stereo import Stereo
+from Stereo import Stereo
 import os
 import numpy as np
 import h5py

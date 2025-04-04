@@ -9,17 +9,8 @@
 ## \defgroup GrayCodeScannerGroup Gray Code Scanner
 #  \brief This group contains all the classes and functions related to the Gray Code Scanner.
 
-from CameraModel import GenICamCamera
-import os
+# from CameraModel import GenICamCamera
 #import time
-import glob
-import h5py
-import numpy as np
-import inspect
-import matplotlib.pyplot as plt
-
-from main import *
-
 
 
 from Classes.GrayCodeScanner import *

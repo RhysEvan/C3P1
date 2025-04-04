@@ -1,15 +1,9 @@
-from Classes.Structured_Light import Structured_Light
-from StructuredLight.Graycode.decoder import *
-import glob
-import h5py
-import numpy as np
-import os
 from scipy.spatial import cKDTree
-from core_toolbox_python.Plucker.Line import *
-import math
-import logging
 
-import multiprocessing
+from C3P1.StructuredLight.Graycode import Decode_Gray
+from Structured_Light import Structured_Light
+from core_toolbox_python.Plucker.Line import *
+
 
 class GrayCodeMultiCam(Structured_Light):
     """
@@ -385,8 +379,8 @@ if __name__ == "__main__":
     import logging
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    import matplotlib
-    matplotlib.use('qtagg')
+    # import matplotlib
+    # matplotlib.use('qtagg')
 
     scanner = GrayCodeMultiCam()
     scanner.load_intrinsic_calibration(r"../Examples/static/1_calibration_data/intrinsic")
