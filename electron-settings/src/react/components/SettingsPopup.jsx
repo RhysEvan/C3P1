@@ -89,7 +89,7 @@ const SettingsPopup = ({open, onOpenChange}) => {
                 <div className="mt-4 flex justify-end space-x-2">
                     <Button
                         onClick={handleSaveSettings}
-                        className="bg-purple-600 text-white hover:bg-purple-700"
+                        className="bg-white text-white border border-purple-700 hover:bg-purple-100"
                     >
                         Save
                     </Button>

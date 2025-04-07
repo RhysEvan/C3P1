@@ -1,4 +1,4 @@
-@import "tailwindcss/preflight";
+@import "tailwindcss";
 @tailwind utilities;
 
 @custom-variant dark (&:is(.dark *));
@@ -111,19 +111,5 @@
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
-}
-@layer base {
-    * {
-        @apply border-border outline-ring/50;
-    }
-
-    body {
-        @apply bg-background text-foreground;
-    }
-}
-
-body {
-    background-color: black;
-    color: white;
 }
 

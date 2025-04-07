@@ -1,7 +1,6 @@
 import React, {useState} from "react";
-import {Settings} from "lucide-react";
-import {Button} from "@/components/ui/button";
 import SettingsPopup from "./components/SettingsPopup";
+import TopBar from "./components/Topbar";
 
 const App = () => {
     const [showSettings, setShowSettings] = useState(false);
@@ -12,28 +11,38 @@ const App = () => {
     };
 
     return (
-        <div id="app" className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-950 to-gray-900 text-gray-100">
-            <div className="flex justify-between items-center p-4 border-b border-purple-700/30 bg-gray-950/70">
-                <h1 className="text-2xl font-bold text-purple-300">Electron Shadcn Settings</h1>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={handleSettingsClick}
-                    aria-label="Settings"
-                    className="!p-3 px-4 border-purple-700 border-2 bg-purple-900/20 hover:bg-purple-900/30 hover:shadow-md hover:shadow-purple-500/30 transition-all duration-300"
-                >
-                    <Settings className="h-5 w-5 text-purple-400 hover:text-purple-300"/>
-                </Button>
+        <div className="min-h-screen flex flex-col bg-gray-950">
+            <TopBar onSettingsClick={handleSettingsClick}/>
 
-            </div>
+            <main className="flex-1 p-6">
+                <div className="max-w-4xl mx-auto space-y-6">
+                    <div
+                        className="p-6 rounded-lg bg-gray-900 border border-purple-500/40 shadow-lg shadow-purple-500/10">
+                        <h2 className="text-xl font-semibold text-purple-300 mb-3">Welcome to Your Application</h2>
+                        <p className="text-gray-400">
+                            This is an Electron app built with React and shadcn UI. Use the settings icon in the
+                            topbar to configure your application preferences.
+                        </p>
+                    </div>
 
-            <div className="p-6">
-                <div className="max-w-2xl mx-auto p-4 rounded-lg bg-gray-800/50 border border-purple-500/20">
-                    <p>Welcome to the Electron app with shadcn UI. Click the settings icon to open the popup.</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div
+                            className="p-5 rounded-lg bg-gray-900/80 border border-purple-700/30 hover:border-purple-500/40 transition-all">
+                            <h3 className="text-lg font-medium text-purple-200 mb-2">Feature One</h3>
+                            <p className="text-sm text-gray-400">Description of your first main feature goes
+                                here.</p>
+                        </div>
+
+                        <div
+                            className="p-5 rounded-lg bg-gray-900/80 border border-purple-700/30 hover:border-purple-500/40 transition-all">
+                            <h3 className="text-lg font-medium text-purple-200 mb-2">Feature Two</h3>
+                            <p className="text-sm text-gray-400">Description of your second main feature goes
+                                here.</p>
+                        </div>
+                    </div>
                 </div>
-            </div>
-
-            {/* Render the settings dialog */}
+            </main>
+            {/* Settings dialog */}
             <SettingsPopup open={showSettings} onOpenChange={setShowSettings}/>
         </div>
     );
