@@ -246,7 +246,7 @@ if __name__ == "__main__":
     matplotlib.use('tkagg')
 
     stereo = Stereo()
-    #stereo.calibrate_camera_intrinsics(r"../Examples/static/1_calibration_data/intrinsic")
+    stereo.calibrate_camera_intrinsics(r"../Examples/static/1_calibration_data/intrinsic")
     stereo.load_intrinsic_calibration(r"../Examples/static/1_calibration_data/intrinsic")
     stereo.calibrate_camera_extrinsics(r"../Examples/static/1_calibration_data/extrinsic",r"../Examples/static/1_calibration_data/intrinsic")
     #stereo.load_extrinsic_calibration()

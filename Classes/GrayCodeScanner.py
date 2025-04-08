@@ -9,20 +9,22 @@
 ## \defgroup GrayCodeScannerGroup Gray Code Scanner
 #  \brief This group contains all the classes and functions related to the Gray Code Scanner.
 import os
+import cv2
 # import time
 import h5py
 import glob
 import inspect
 import numpy as np
+import matplotlib.pyplot as plt
 
 try:
     from CameraModel.GenICam.GenICamCamera import GenICamCamera
 except:
     print("no luck with module")
 from StructuredLight.Graycode import ProjectionPattern, Decode_Gray
-from Calibration import MonoCalibration, StereoCalibration
-from Calibration import IntrisicCalibration
-from Calibration import TurnTableCalibration
+from Calibration.GraycodeCalibration import MonoCalibration, StereoCalibration
+from Calibration.IntrinsicCalibration import IntrisicCalibration
+from Calibration.TurnTableCalibration import TurnTableCalibration
 from DataCapture import innitiate_support
 from DataCapture import graycode_data_capture
 from DataCapture import intrinsic_calibration_capture
@@ -317,7 +319,7 @@ class GrayCodeScanner:
 
         calibrated_data = []
         calibrated_data = glob.glob(self.CALIBRATION_DATA_DIRECTORY + "/*parameters.h5")
-        if len(calibrated_data) == 0:
+        if len(calibrated_data) == 2:
             print("Calibrating stereo")
             self.stereo_calibration()
         pass
@@ -529,7 +531,17 @@ class GrayCodeScanner:
         return scenes
     def load_parameters(self, path):
         calibration_paths = glob.glob(path)
-        h5_file_path = calibration_paths[0]
+        try:
+            h5_file_path = calibration_paths[0]
+        except:
+            cam_in = [
+                [0, 0, 0],
+                [0, 1, 1],
+                [0, 0, 1]
+            ]
+            cam_dist = [0, 0,0, 0,0]
+            return np.array(cam_in), np.array(cam_dist)
+
         with h5py.File(h5_file_path, 'r') as h5_file:
             # Iterate over each key in the file
             calibration = h5_file["camera_calibration/camera_parameters"]
