@@ -93,7 +93,7 @@ class Structured_Light(Stereo):
         if not os.path.exists(OUTPUT_FOLDER):
             os.makedirs(OUTPUT_FOLDER)
 
-        ALLOWED_EXTENSIONS = ('*.tiff')
+        ALLOWED_EXTENSIONS = ('*.tiff',)
 
         app = MyApp(input_folder=INPUT_FOLDER,
                     output_folder=OUTPUT_FOLDER,
@@ -103,6 +103,7 @@ class Structured_Light(Stereo):
         print("Starting wxPython MainLoop...")
         app.MainLoop()
         print("Application finished.")
+        app.OnExit()
         app.Destroy()  # Clean up the wxPython app
 
 
@@ -136,10 +137,24 @@ class Structured_Light(Stereo):
                 continue
         return scenes
 
+    def Close(self):
+        pass
+
+        if hasattr(self.cameras, 'Close'):
+            self.cameras.Close()
+            print('Projector: Closed all cameras.')
+            self.cameras = []
+    def __del__(self):
+        # check if cameras have Close function
+        if hasattr(self.cameras, 'Close'):
+            print('Destructor: Closed all cameras.')
+
+            self.cameras.Close()
+
 
 if __name__ == "__main__":
 
     Scanner = Structured_Light()
     Scanner.load_cams_from_file('camera_config.json')
     Scanner.plot_and_capture_pattern(r"C:\Users\Seppe\PycharmProjects\Cameratoolbox_dev\C3P1\Examples\static\0_projection_pattern",r"../Examples/static/2_object_data3")
-
+    Scanner.Close()
