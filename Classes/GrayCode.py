@@ -10,6 +10,10 @@ import math
 import logging
 
 import multiprocessing
+from DataCapture import graycode_data_capture
+from StructuredLight.Graycode.projector_image import *
+
+
 
 class GrayCodeMultiCam(Structured_Light):
     """
@@ -28,7 +32,7 @@ class GrayCodeMultiCam(Structured_Light):
         self.Decoder = Decode_Gray()
         self.Images = []
 
-    def generate_patterns(self):
+    def generate_patterns(self,width=720, height=1280, projector_directory="projector_pattern"):
         """
         \ingroup structured_light
         \brief Generates Gray Code patterns for projection.
@@ -36,6 +40,14 @@ class GrayCodeMultiCam(Structured_Light):
         \return A list of generated patterns.
         """
         # Implement pattern generation logic here
+
+        #check if the directory exists
+        if not os.path.exists(projector_directory):
+            os.makedirs(projector_directory)
+        graycode = ProjectionPattern(width, height, projector_directory)
+        graycode.generate_images()
+
+
         pass
 
     def decode_patterns_from_file(self, captured_images_path):
@@ -389,6 +401,7 @@ if __name__ == "__main__":
     matplotlib.use('qtagg')
 
     scanner = GrayCodeMultiCam()
+    scanner.generate_patterns(width=1280, height=720, projector_directory=r"../Examples/static/0_projection_pattern")
     scanner.load_intrinsic_calibration(r"../Examples/static/1_calibration_data/intrinsic")
     scanner.load_extrinsic_calibration(r"../Examples/static/1_calibration_data/extrinsic")
     scanner.decode_patterns_from_file(captured_images_path=r"..\Examples\static\2_object_data\Seppe/")
