@@ -308,11 +308,6 @@ class GrayCodeMultiCam(Structured_Light):
 
         # Reshape to match the original left image shape (H, W, 2)
         return nearest_indices, distances
-
-
-
-
-
         pass
 
     def find_correspondence(self):
@@ -375,6 +370,7 @@ class GrayCodeMultiCam(Structured_Light):
             ..., 0].astype('O')
 
         return inverse_matrix_left_cam, inverse_matrix_right_cam
+
 if __name__ == "__main__":
     import logging
 

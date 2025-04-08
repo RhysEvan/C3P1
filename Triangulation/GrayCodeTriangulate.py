@@ -3,10 +3,11 @@ import h5py
 import cv2 as cv
 import numpy as np
 import open3d as o3d
-# from PyCamCalib.core.calibration import StereoParameters
+
+from calibration_toolbox_python.src.PyCamCalib.core.calibration import StereoParameters
 
 
-class StereoTriangulator():
+class StereoTriangulator:
     """
     class instance for triangulating two images to determine the depth.
     """

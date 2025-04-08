@@ -1,10 +1,5 @@
 import glob
-import numpy as np
-import h5py
-import os
-import matplotlib.pyplot as plt
 
-from calibration_toolbox_python.src.PyCamCalib.core.CameraParameters import CameraParameters
 from calibration_toolbox_python.src.PyCamCalib.core.calibration import *
 from core_toolbox_python.Transformation.TransformationMatrix import TransformationMatrix
 
@@ -55,7 +50,6 @@ class Stereo:
         else:
             self.INTRINSIC_CALIBRATION_DATA_DIRECTORY = INTRINSIC_CALIBRATION_DATA_DIRECTORY
 
-        calibrated_data = []
         calibrated_data = glob.glob(INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/*_scan.h5")
 
         if len(calibrated_data) == 0:
@@ -158,38 +152,51 @@ class Stereo:
         for data in calibrated_data:
             self.H.append(TransformationMatrix())
             self.H[-1].load_from_json(data)
-    def __stereo_calibration(self):
 
+    def __stereo_calibration(self):
         self.load_intrinsic_calibration()
         calibrated_data = glob.glob(self.EXRINSIC_CALIBRATION_DATA_DIRECTORY + "/*_scan_*.h5")
         images_list = []
-        #for data in calibrated_data:
+    
+        # Load black images for both cameras
         black_images_l = self._file_loading("L_pattern_black", r'\*scan_*.h5')
-        black_images_r = self._file_loading("R_pattern_black", r'\scan_*.h5') #todo, make this camera name independent
+        black_images_r = self._file_loading("R_pattern_black", r'\scan_*.h5')  # Todo: make this camera name independent
         images_list.append(black_images_l)
         images_list.append(black_images_r)
+    
         # Perform stereo calibration
-        filename = self.EXRINSIC_CALIBRATION_DATA_DIRECTORY #todo, make this naming independant of number of cams
-
+        filename = self.EXRINSIC_CALIBRATION_DATA_DIRECTORY  # Todo: make this naming independent of number of cams
+    
         calibrator = StereoCalibrator()
-        stereo_parameters = calibrator.calibrate(images_list[0], images_list[1],self.camera_parameters[0] , self.camera_parameters[1], self.checkerboard_size, self.boardsize)
-        # %% save all detection to a file
-        calibrator.save_checkerboard_detection_to_images(images_list[0], images_list[1], self.EXRINSIC_CALIBRATION_DATA_DIRECTORY + "/checkerboard_detection")
-        # %% Retry calibration after removing potential outliers
+        stereo_parameters = calibrator.calibrate(
+            images_list[0], images_list[1], self.camera_parameters[0], self.camera_parameters[1],
+            self.checkerboard_size, self.boardsize
+        )
+    
+        # Save initial checkerboard detections to a file
+        checkerboard_detection_dir = self.EXRINSIC_CALIBRATION_DATA_DIRECTORY + "/checkerboard_detection"
+        calibrator.save_checkerboard_detection_to_images(images_list[0], images_list[1], checkerboard_detection_dir)
+    
+        # Retry calibration after removing potential outliers, but save the file only once if necessary
         old_indices = calibrator.indices
-        for i in range(10):  # do this max 10 times
-            print("select outliers, exit to continue")
+        for i in range(10):  # Max 10 iterations
+            print("Select outliers, exit to continue.")
             new_indices = calibrator.plot_and_filter_reproj_error()
             if new_indices == old_indices:
                 print("New indices are the same as old indices. Continuing to the next calibration.")
-                break  # Skip the rest of the loop and move to the next iteration
+                break  # Skip the rest of the loop if indices haven't changed
             else:
                 stereo_parameters = calibrator.calibrate_indices(new_indices)
                 old_indices = new_indices
-        stereo_parameters.info = ['L,R']  # todo make this camera name independent
-
+    
+        # Update the info and save parameters only once
+        stereo_parameters.info = ['L,R']  # Todo: make this camera name independent
+    
+        # Save parameters once after final calibration is done
         stereo_parameters.save_parameters(filename + '/_extrinsic_parameters.h5')
-        print(filename + '_extrinsic_parameters.h5')
+        print(f"Parameters saved to {filename}/_extrinsic_parameters.h5")
+
+
     def _file_loading_single(self, file):
         """
         file_loading: loads image folder into array per identifier
@@ -246,8 +253,8 @@ if __name__ == "__main__":
     import logging
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    import matplotlib
-    matplotlib.use('tkagg')
+    # import matplotlib
+    # matplotlib.use('tkagg')
 
     stereo = Stereo()
     stereo.calibrate_camera_intrinsics(r"../Examples/static/1_calibration_data/intrinsic")

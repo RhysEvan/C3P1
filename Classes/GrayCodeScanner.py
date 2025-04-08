@@ -16,27 +16,29 @@ import inspect
 import numpy as np
 
 try:
-    from CameraModel.GenICam.GenICamCamera import GenICamCamera
+    from camera_toolbox_python.CameraModel.GenICam.GenICamCamera import GenICamCamera
 except:
     print("no luck with module")
-from StructuredLight.Graycode import ProjectionPattern, Decode_Gray
-import Calibration.GraycodeCalibration as cg
-import Calibration.IntrinsicCalirbration as ci
-import Calibration.TurnTableCalibration as ct
-from DataCapture import innitiate_support
-from DataCapture import graycode_data_capture
-from DataCapture import intrinsic_calibration_capture
-from DataCapture import turntable_calibration_capture
-from Triangulation import MonoTriangulator, StereoTriangulator
+from C3P1.StructuredLight.Graycode import ProjectionPattern, Decode_Gray
+import C3P1.Calibration.GraycodeCalibration as cg
+import C3P1.Calibration.IntrinsicCalirbration as ci
+import C3P1.Calibration.TurnTableCalibration as ct
+from C3P1.DataCapture import innitiate_support
+from C3P1.DataCapture import graycode_data_capture
+from C3P1.DataCapture import intrinsic_calibration_capture
+from C3P1.DataCapture import turntable_calibration_capture
+from C3P1.Triangulation import MonoTriangulator, StereoTriangulator
 import json
 
 from inputparameters import PROJECTOR_DIRECTORY
-from inputparameters import CALIBRATION_DATA_DIRECTORY, INTRINSIC_CALIBRATION_DATA_DIRECTORY, TURNTABLE_CALIBRATION_DATA_DIRECTORY
+from inputparameters import CALIBRATION_DATA_DIRECTORY, INTRINSIC_CALIBRATION_DATA_DIRECTORY, \
+    TURNTABLE_CALIBRATION_DATA_DIRECTORY
 from inputparameters import WIDTH, HEIGHT
 from inputparameters import IMAGE_RESOLUTION
 from inputparameters import CHESS_SHAPE, CHESS_BLOCK_SIZE
 from inputparameters import SQUARES_X, SQUARES_Y
 from inputparameters import SQUARES_LENGTH, MARKER_LENGTH
+
 
 def save_selected_frames(type_format, identifier, frame_list):
     filename = f"{type_format}selected_frames_{identifier}.txt"
@@ -44,14 +46,15 @@ def save_selected_frames(type_format, identifier, frame_list):
         file.write(",".join(map(str, frame_list)))
     print(f"Frame list saved as {filename}")
 
+
 class GrayCodeScanner:
     def __init__(self, folder_name_pattern, texture_camera, folder_name_capture,
-                 range_steps_calib, range_steps_scan, com_port='COM4', obj_path=None, exposure=2500, exposure_intrinsic=100000):
+                 range_steps_calib, range_steps_scan, com_port='COM4', obj_path=None, exposure=2500,
+                 exposure_intrinsic=100000):
 
         self.stereo_triangulate = None
         self.mono_triangulate_left = None
-        self.mono_triangulate_right = None # 0705 todo: init with the proper class. This is not the right way to do it. However, the classes need to be changed to be able to do this. It needs to allow an empty init.
-
+        self.mono_triangulate_right = None  # 0705 todo: init with the proper class. This is not the right way to do it. However, the classes need to be changed to be able to do this. It needs to allow an empty init.
 
         self.folder_name_pattern = folder_name_pattern
         self.cameras = []
@@ -61,7 +64,7 @@ class GrayCodeScanner:
         self.range_steps_calib = range_steps_calib
         self.range_steps_scan = range_steps_scan
         self.com_port = com_port
-        self.obj_path = obj_path # path to objects
+        self.obj_path = obj_path  # path to objects
         if not os.path.exists(obj_path):
             os.makedirs(obj_path)
         self.exposure = exposure
@@ -86,8 +89,7 @@ class GrayCodeScanner:
             os.makedirs(TURNTABLE_CALIBRATION_DATA_DIRECTORY)
         self.TURNTABLE_CALIBRATION_DATA_DIRECTORY = TURNTABLE_CALIBRATION_DATA_DIRECTORY
 
-
-    def load_cams(self,cameras):
+    def load_cams(self, cameras):
         """
         Load the cameras
         :param cameras:     cameras = [cam_l, cam_r]
@@ -95,13 +97,14 @@ class GrayCodeScanner:
 
         :return: none
         """
-        #0705 todo: fix that this works for n-cams
+        # 0705 todo: fix that this works for n-cams
         fixed_width = 800
 
         frame_l = cameras[0].GetFrame()
         frame_r = cameras[1].GetFrame()
         (h_l, w_l) = frame_l.shape[:2]
-        (h_r, w_r) = frame_r.shape[:2] #0705 todo this parameter should be saved somewhere, now it is loaded from a file.
+        (h_r, w_r) = frame_r.shape[
+                     :2]  # 0705 todo this parameter should be saved somewhere, now it is loaded from a file.
 
         ratio_l = fixed_width / float(w_l)
         dim_l = (fixed_width, int(h_l * ratio_l))
@@ -112,6 +115,7 @@ class GrayCodeScanner:
         self.cameras = cameras
         self.dimensions = dimensions
         print(dimensions)
+
     def load_cams_from_ids(self, device_ids, exposures):
         """
         Load the cameras from a list of device IDs.
@@ -122,7 +126,7 @@ class GrayCodeScanner:
         :return: none
         """
 
-        #0705 todo make/set  a class variable for the exposures.
+        # 0705 todo make/set  a class variable for the exposures.
 
         cameras = []
         for dev_id, exposure in zip(device_ids, exposures):
@@ -138,7 +142,8 @@ class GrayCodeScanner:
             except Exception as e:
                 print(f"Failed to load camera {dev_id}: {e}")
         self.load_cams(cameras)
-    def load_cams_from_file(self, file = 'camera_config.json'):
+
+    def load_cams_from_file(self, file='camera_config.json'):
         """
         Load the cameras from a json file.
         :param file: string to file (json) with camera info
@@ -157,13 +162,15 @@ class GrayCodeScanner:
                 if error:
                     print(f"Error opening camera {cam_info['dev_id']}")
                     continue
-                camera.SetParameterDouble("ExposureTime", cam_info["exposure"]) #0705 todo: load multiple exposures and set the class variable.
+                camera.SetParameterDouble("ExposureTime", cam_info[
+                    "exposure"])  # 0705 todo: load multiple exposures and set the class variable.
                 camera.Start()
                 cameras.append(camera)
             except Exception as e:
                 print(f"Failed to load camera {cam_info['dev_id']}: {e}")
-        self.load_cams( cameras)
+        self.load_cams(cameras)
         pass
+
     def generate_projection_pattern(self):
         """
         Generate the projection pattern.
@@ -176,12 +183,13 @@ class GrayCodeScanner:
         ######################### generate projection pattern ####################################
         ##########################################################################################
 
-        graycode_folder = glob.glob(PROJECTOR_DIRECTORY+"/*")
+        graycode_folder = glob.glob(PROJECTOR_DIRECTORY + "/*")
         # check fi folder exists
         if len(graycode_folder) == 0:
             self.graycode = ProjectionPattern(WIDTH, HEIGHT, PROJECTOR_DIRECTORY)
             self.graycode.generate_images()
         pass
+
     def center_cameras_to_projector(self):
         '''
         Center the cameras to the projector. Windows with a feed from all cameras is shown, press enter (with a selected window to continue)
@@ -193,6 +201,7 @@ class GrayCodeScanner:
         Use the camera windows to align the camera's to the best of you capabilities with the black cross projected. Press Enter to continue""")
         innitiate_support(self.cameras, self.dimensions)
         pass
+
     def calibrate_camera_intrinsics(self):
         """
         Calibrates the camera intrinsics.
@@ -201,41 +210,41 @@ class GrayCodeScanner:
         """
 
         cameras = self.cameras
-        self.set_exposure_time(cameras,self.exposure_intrinsic)
-
+        self.set_exposure_time(cameras, self.exposure_intrinsic)
 
         calibrated_data = []
-        calibrated_data = glob.glob(self.INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/*_scan.h5")
+        calibrated_data = glob.glob(self.INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/*_scan.h5")
 
         if len(calibrated_data) == 0:
             intrinsic_calibration_capture(self.INTRINSIC_CALIBRATION_DATA_DIRECTORY,
-                                            cameras, self.texture_camera,
-                                            identifier=["L","R"])
+                                          cameras, self.texture_camera,
+                                          identifier=["L", "R"])
         else:
             print("Intrinsic calibration images already exist, skipping capture")
         calibrated_data = []
-        calibrated_data = glob.glob(INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/*parameters.h5")
+        calibrated_data = glob.glob(INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/*parameters.h5")
         if len(calibrated_data) == 0:
             self.intrinsic_calibration()
         self.set_exposure_time(self.cameras)
         self.calibration_data = calibrated_data
+
     def intrinsic_calibration(self):
         """
         Execute calibration
         """
         image_count = self.image_count_calibration
         frame_list = list(range(image_count))
-        self.intrinsic_calibration_L = self.quality_optimisation(ci.IntrisicCalibration,frame_list,
-            INTRINSIC_CALIBRATION_DATA_DIRECTORY,
-            CHESS_SHAPE,
-            CHESS_BLOCK_SIZE,
-            WIDTH,
-            HEIGHT,
-            IMAGE_RESOLUTION,
-            identifier="L",
-            format_type="int_",
-            visualize=True
-            )
+        self.intrinsic_calibration_L = self.quality_optimisation(ci.IntrisicCalibration, frame_list,
+                                                                 INTRINSIC_CALIBRATION_DATA_DIRECTORY,
+                                                                 CHESS_SHAPE,
+                                                                 CHESS_BLOCK_SIZE,
+                                                                 WIDTH,
+                                                                 HEIGHT,
+                                                                 IMAGE_RESOLUTION,
+                                                                 identifier="L",
+                                                                 format_type="int_",
+                                                                 visualize=True
+                                                                 )
 
         self.intrinsic_calibration_R = self.quality_optimisation(
             ci.IntrisicCalibration,
@@ -249,7 +258,7 @@ class GrayCodeScanner:
             identifier="R",
             format_type="int_",
             visualize=True
-            )
+        )
 
         if self.texture_camera is not None:
             self.intrinsic_calibration_RGB = self.quality_optimisation(
@@ -264,8 +273,9 @@ class GrayCodeScanner:
                 identifier="RGB",
                 format_type="int_",
                 visualize=True
-                )
-    def set_exposure_time(self,cameras,exposure = None):
+            )
+
+    def set_exposure_time(self, cameras, exposure=None):
         """
         Set the exposure time for the cameras in the cameralist.
         :param cameras:
@@ -277,7 +287,8 @@ class GrayCodeScanner:
             exposure = self.exposure
 
         try:
-            if isinstance(self.exposure, list): #0705 changed this, now setting a different exposure for each camera is possible.
+            if isinstance(self.exposure,
+                          list):  # 0705 changed this, now setting a different exposure for each camera is possible.
                 for i, camera in enumerate(cameras):
                     camera.SetParameterDouble("ExposureTime", exposure[i])
             else:
@@ -285,6 +296,7 @@ class GrayCodeScanner:
                     camera.SetParameterDouble("ExposureTime", exposure)
         except:
             print("setting exposure failed, this might not be supported byt the camera")
+
     def calibrate_camera_extrinsics(self):
         """
         Calibrates the camera extrinsics.
@@ -301,7 +313,7 @@ class GrayCodeScanner:
         None
         """
         calibrated_data = []
-        calibration_data = glob.glob(self.CALIBRATION_DATA_DIRECTORY+"/*.h5")
+        calibration_data = glob.glob(self.CALIBRATION_DATA_DIRECTORY + "/*.h5")
 
         if len(calibration_data) == 0:
             time_hold = input("turn on projector then press enter for extrinsic calibration")
@@ -319,9 +331,10 @@ class GrayCodeScanner:
             print("Calibrating stereo")
             self.stereo_calibration()
         pass
+
     def stereo_calibration(self):
-        h5_path_L = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/L_camera_intrinsic_parameters.h5"
-        h5_path_R = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/R_camera_intrinsic_parameters.h5"
+        h5_path_L = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/L_camera_intrinsic_parameters.h5"
+        h5_path_R = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/R_camera_intrinsic_parameters.h5"
         cam_int_L, cam_dist_L = self.load_parameters(h5_path_L)
         cam_int_R, cam_dist_R = self.load_parameters(h5_path_R)
 
@@ -335,11 +348,11 @@ class GrayCodeScanner:
             CALIBRATION_DATA_DIRECTORY,
             CHESS_SHAPE,
             CHESS_BLOCK_SIZE,
-            WIDTH,HEIGHT,
+            WIDTH, HEIGHT,
             IMAGE_RESOLUTION,
             cam_int_L, cam_dist_L,
             identifier="L",
-            format_type = "mono_"
+            format_type="mono_"
         )
 
         self.calib_mono_right = self.quality_optimisation(
@@ -349,19 +362,20 @@ class GrayCodeScanner:
             CALIBRATION_DATA_DIRECTORY,
             CHESS_SHAPE,
             CHESS_BLOCK_SIZE,
-            WIDTH,HEIGHT,
+            WIDTH, HEIGHT,
             IMAGE_RESOLUTION,
             cam_int_R, cam_dist_R,
             identifier="R",
-            format_type = "mono_"
+            format_type="mono_"
         )
 
         self.calib_stereo = cg.StereoCalibration(self.decoder,
-                                              CALIBRATION_DATA_DIRECTORY,
-                                              CHESS_SHAPE,
-                                              CHESS_BLOCK_SIZE)
+                                                 CALIBRATION_DATA_DIRECTORY,
+                                                 CHESS_SHAPE,
+                                                 CHESS_BLOCK_SIZE)
 
-    def calibrate_turntable_extrinsics(self,obj_path = None, range_steps_calib = None, range_steps_scan = None, com_port = None):
+    def calibrate_turntable_extrinsics(self, obj_path=None, range_steps_calib=None, range_steps_scan=None,
+                                       com_port=None):
         """
         Captures turntable calibration data.
 
@@ -375,11 +389,11 @@ class GrayCodeScanner:
         :type com_port: str, optional
         :return: None
         """
-         #0705 todo: make this function return 0: success, 1: failure
-        #get the parameters
+        # 0705 todo: make this function return 0: success, 1: failure
+        # get the parameters
         cameras = self.cameras
         exposure_intrinsic = self.exposure_intrinsic
-        exposure = self.exposure #0705 todo: does this also needs to be overloaded from the function call?
+        exposure = self.exposure  # 0705 todo: does this also needs to be overloaded from the function call?
         folder_name_pattern = self.folder_name_pattern
         texture_camera = self.texture_camera
         if obj_path is None:
@@ -396,7 +410,8 @@ class GrayCodeScanner:
         input("please turn off projector (press enter to continue)")
         if len(calibrated_data) == 0:
             self.set_exposure_time(cameras)
-            turntable_calibration_capture(cameras, self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, range_steps_calib, com_port)
+            turntable_calibration_capture(cameras, self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, range_steps_calib,
+                                          com_port)
 
         calibrated_data = []
         calibrated_data = glob.glob(self.TURNTABLE_CALIBRATION_DATA_DIRECTORY + "/*matrix_data.h5")
@@ -404,37 +419,40 @@ class GrayCodeScanner:
             self.turntable_calibration()
 
         self.set_exposure_time(cameras)
-    def turntable_calibration(self): #0705 todo: add folder names as input parameters
+
+    def turntable_calibration(self):  # 0705 todo: add folder names as input parameters
         """
         Perform turntable calibration.
         :return: none
         """
-        h5_path_L = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/L_camera_intrinsic_parameters.h5"
-        h5_path_R = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/R_camera_intrinsic_parameters.h5"
+        h5_path_L = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/L_camera_intrinsic_parameters.h5"
+        h5_path_R = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/R_camera_intrinsic_parameters.h5"
 
         cam_int_L, cam_dist_L = self.load_parameters(h5_path_L)
         cam_int_R, cam_dist_R = self.load_parameters(h5_path_R)
 
         turntable_L = ct.TurnTableCalibration(self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_L,
-                                           cam_dist_L, SQUARES_X, SQUARES_Y, SQUARES_LENGTH,
-                                           MARKER_LENGTH, "L")
+                                              cam_dist_L, SQUARES_X, SQUARES_Y, SQUARES_LENGTH,
+                                              MARKER_LENGTH, "L")
         turntable_L.calibrate()
 
         turntable_R = ct.TurnTableCalibration(self.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_R,
-                                           cam_dist_R, SQUARES_X, SQUARES_Y, SQUARES_LENGTH,
-                                           MARKER_LENGTH, "R")
+                                              cam_dist_R, SQUARES_X, SQUARES_Y, SQUARES_LENGTH,
+                                              MARKER_LENGTH, "R")
         turntable_R.calibrate()
-    def scan_object(self,obj_path=None, range_steps_scan=1):
+
+    def scan_object(self, obj_path=None, range_steps_scan=1):
         """
         Capture object data or load data if already captured.
         :param obj_path: path where the capture data is stored. if it is empty, a new capture will be done, if it is contains data, the data will be loaded. if none is given, the default path will be used.
         :param range_steps_scan: if a turntable is pressent this is the number of steps
         :return: pointclouds (stereo, mono_left, mono_right)
         """
-        self.capture_or_load_object_data(obj_path=obj_path,range_steps_scan=range_steps_scan)
+        self.capture_or_load_object_data(obj_path=obj_path, range_steps_scan=range_steps_scan)
         self.calculate_pointcloud(obj_path=obj_path)
 
         return self.stereo_pointclouds, self.mono_left_pointclouds, self.mono_right_pointclouds
+
     def capture_or_load_object_data(self, obj_path=None, range_steps_scan=1):
         """
         Capture object data or load data if already captured.
@@ -444,17 +462,19 @@ class GrayCodeScanner:
         """
         if obj_path is None:
             obj_path = self.obj_path
-        if not os.path.exists(obj_path): #make the path if is does not exist
+        if not os.path.exists(obj_path):  # make the path if is does not exist
             os.makedirs(obj_path)
-        self.obj_path = obj_path # update the path
+        self.obj_path = obj_path  # update the path
         capture_data = []
-        capture_data = glob.glob(obj_path + "*.h5") # check if the data is already captured
+        capture_data = glob.glob(obj_path + "*.h5")  # check if the data is already captured
         input("please turn on projector")
-        if len(capture_data) == 0: # if the data is not captured, capture it
-            graycode_data_capture(self.folder_name_pattern, self.cameras, self.texture_camera, self.dimensions, obj_path, range_steps_scan)
+        if len(capture_data) == 0:  # if the data is not captured, capture it
+            graycode_data_capture(self.folder_name_pattern, self.cameras, self.texture_camera, self.dimensions,
+                                  obj_path, range_steps_scan)
         else:
             print("object data already exists, skipping capture, calculating pointclouds")
-    def calculate_pointcloud(self,obj_path=None):
+
+    def calculate_pointcloud(self, obj_path=None):
         """
         Calculate pointclouds from the captured object data.
         :param obj_path:
@@ -464,7 +484,7 @@ class GrayCodeScanner:
             obj_path = self.obj_path
         scenes = self.load_h5(obj_path)
         if scenes is None:
-            print("no data found in " ,obj_path)
+            print("no data found in ", obj_path)
             return
 
         self.stereo_triangulate = StereoTriangulator(
@@ -476,7 +496,6 @@ class GrayCodeScanner:
                                                       'L')
         self.mono_triangulate_right = MonoTriangulator(IMAGE_RESOLUTION, self.CALIBRATION_DATA_DIRECTORY, WIDTH, HEIGHT,
                                                        'R')
-
 
         # Lists to collect point clouds for all scenes
         self.stereo_pointclouds = []
@@ -498,19 +517,20 @@ class GrayCodeScanner:
                                                                                              left_vertical_decoded_image)
 
             mono_left_pointcloud = self.mono_triangulate_left.triangulate_mono(camera_points,
-                                                                                    projector_points)
+                                                                               projector_points)
 
             camera_points, projector_points, _ = self.mono_triangulate_right.get_cam_proj_pts(None,
                                                                                               right_horizontal_decoded_image,
                                                                                               right_vertical_decoded_image)
 
             mono_right_pointcloud = self.mono_triangulate_right.triangulate_mono(camera_points,
-                                                                                      projector_points)
+                                                                                 projector_points)
 
             # Append the point clouds to the respective lists
             self.stereo_pointclouds.append(stereo_pointcloud)
             self.mono_left_pointclouds.append(mono_left_pointcloud)
             self.mono_right_pointclouds.append(mono_right_pointcloud)
+
     def load_h5(self, path):
         """
         Load the h5 files from the given path.
@@ -518,13 +538,14 @@ class GrayCodeScanner:
         :return: A list of scenes.
         """
         scenes = []
-        h5_file_paths = glob.glob(path+'*')
-        for _,path in enumerate(h5_file_paths):
+        h5_file_paths = glob.glob(path + '*')
+        for _, path in enumerate(h5_file_paths):
             if ".h5" in path:
                 scenes.append(self.load_object(path))
             else:
                 continue
         return scenes
+
     def load_parameters(self, path):
         calibration_paths = glob.glob(path)
         h5_file_path = calibration_paths[0]
@@ -556,11 +577,13 @@ class GrayCodeScanner:
             for key in h5f.keys():
                 scene_data[key] = np.array(h5f[key])
         return scene_data
+
     def Visualize(self):
         pass
-        #visualisepointcloud(self.stereo_pointcloud)
-        #visualisepointcloud(self.mono_left_pointcloud)
-        #visualisepointcloud(self.mono_right_pointcloud)
+        # visualisepointcloud(self.stereo_pointcloud)
+        # visualisepointcloud(self.mono_left_pointcloud)
+        # visualisepointcloud(self.mono_right_pointcloud)
+
     def save_pointclouds(self, obj_path="output"):
         # Save all point clouds to separate npy files
         if not os.path.exists(obj_path):
@@ -570,6 +593,7 @@ class GrayCodeScanner:
         np.savez(os.path.join(obj_path, 'mono_left_pointclouds.npz'), *self.mono_left_pointclouds)
         np.savez(os.path.join(obj_path, 'mono_right_pointclouds.npz'), *self.mono_right_pointclouds)
         pass
+
     def save_selected_frames(self, type_format, identifier, frame_list):
         pass
 
@@ -637,6 +661,7 @@ class GrayCodeScanner:
                 camera.Close()
             except Exception as e:
                 print(f"Failed to close camera: {e}")
+
     def __del__(self):
         """
         Destructor to stop and close the cameras.

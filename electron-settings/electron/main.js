@@ -3,33 +3,42 @@ const path = require('path');
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-// Change path to src directory as requested
-const settingsPath = path.join(__dirname, '../src/settings.yaml');
+function getSettingsPath() {
+  // In development
+  if (process.env.NODE_ENV === 'development') {
+    return path.join(__dirname, 'settings.yaml');
+  }
 
-// Function to read settings
-function readSettings() {
-    try {
-        if (fs.existsSync(settingsPath)) {
-            const fileContents = fs.readFileSync(settingsPath, 'utf8');
-            return yaml.load(fileContents) || {};
-        }
-        return {};
-    } catch (error) {
-        console.error('Error reading settings:', error);
-        return {};
-    }
+  // In production
+  return process.env.ELECTRON_RUN_AS_NODE
+    ? path.join(__dirname, '../resources/settings.yaml')
+    : path.join(process.resourcesPath, 'settings.yaml');
 }
 
-// Function to save settings
-function saveSettings(settings) {
-    try {
-        const yamlStr = yaml.dump(settings);
-        fs.writeFileSync(settingsPath, yamlStr, 'utf8');
-        return true;
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        return false;
+function readSettings() {
+  try {
+    const settingsPath = getSettingsPath();
+    if (fs.existsSync(settingsPath)) {
+      const fileContents = fs.readFileSync(settingsPath, 'utf8');
+      return yaml.load(fileContents) || {};
     }
+    return {};
+  } catch (error) {
+    console.error('Failed to load settings:', error);
+    return {};
+  }
+}
+
+function saveSettings(settings) {
+  try {
+    const settingsPath = getSettingsPath();
+    const yamlStr = yaml.dump(settings);
+    fs.writeFileSync(settingsPath, yamlStr, 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Failed to save settings:', error);
+    return false;
+  }
 }
 
 function createWindow() {
@@ -72,5 +81,6 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', function () {
+    // On macOS, it's common to keep the app open even when all windows are closed
     if (process.platform !== 'darwin') app.quit();
 });

@@ -1,5 +1,5 @@
 """
-main running sequence for projcet
+main running sequence for project
 """
 import os
 import cv2
@@ -18,7 +18,7 @@ import config.config as cfg
 import inputparameters as ip
 
 try:
-    from CameraModel.GenICam.GenICamCamera import GenICamCamera
+    from camera_toolbox_python.CameraModel.GenICam.GenICamCamera import GenICamCamera
 except:
     print("no luck with module")
 
