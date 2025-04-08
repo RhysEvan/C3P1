@@ -1,8 +1,7 @@
 import React from "react";
-import {Bell, HelpCircle, Moon, Search, Settings} from "lucide-react";
+import {Bell, HelpCircle, Moon, Settings} from "lucide-react";
 import {Button} from "@/components/ui/button";
 import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
-import {Input} from "@/components/ui/input";
 
 const TopBar = ({onSettingsClick}) => {
     const buttonClasses = "border-purple-700 border-2 bg-purple-900/20 hover:bg-purple-900/50 hover:shadow-lg hover:shadow-purple-500/50 transition-all duration-300";

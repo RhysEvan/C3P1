@@ -8,9 +8,7 @@ import glob
 import inspect
 import numpy as np
 import StructuredLight.Graycode as slg
-import Calibration.GraycodeCalibration as cg
-import Calibration.IntrinsicCalirbration as ci
-import Calibration.TurnTableCalibration as ct
+import Calibration as cal
 import DataCapture as dc
 import Triangulation as tl
 import config.config as cfg
@@ -181,7 +179,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         """
         frame_list = list(range(cfg.cal_image_count_intrinsic))
         self.intrinsic_calibration_L = self.quality_optimisation(
-            ci.IntrisicCalibration,
+            cal.IntrisicCalibration,
             frame_list,
             identifier="L",
             format_type="int_",
@@ -189,7 +187,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         )
 
         self.intrinsic_calibration_R = self.quality_optimisation(
-            ci.IntrisicCalibration,
+            cal.IntrisicCalibration,
             frame_list,
             identifier="R",
             format_type="int_",
@@ -197,7 +195,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         )
 
         self.intrinsic_calibration_RGB = self.quality_optimisation(
-            ci.IntrisicCalibration,
+            cal.IntrisicCalibration,
             frame_list,
             identifier="RGB",
             format_type="int_",
@@ -213,7 +211,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         frame_list = list(range(cfg.cal_image_count_stereo_cal))
 
         self.calib_mono_left = self.quality_optimisation(
-            cg.MonoCalibration,
+            cal.MonoCalibration,
             frame_list,
             self.decoder,
             cam_int_L, cam_dist_L,
@@ -222,7 +220,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         )
 
         self.calib_mono_right = self.quality_optimisation(
-            cg.MonoCalibration,
+            cal.MonoCalibration,
             frame_list,
             self.decoder,
             cam_int_R, cam_dist_R,
@@ -230,7 +228,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
             format_type="mono_"
         )
 
-        self.calib_stereo = cg.StereoCalibration(self.decoder,
+        self.calib_stereo = cal.StereoCalibration(self.decoder,
                                                  ip.CALIBRATION_DATA_DIRECTORY,
                                                  ip.CHESS_SHAPE,
                                                  ip.CHESS_BLOCK_SIZE)
@@ -242,12 +240,12 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         cam_int_L, cam_dist_L = self.load_parameters(h5_path_L)
         cam_int_R, cam_dist_R = self.load_parameters(h5_path_R)
 
-        turntable_L = ct.TurnTableCalibration(ip.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_L,
+        turntable_L = cal.TurnTableCalibration(ip.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_L,
                                               cam_dist_L, ip.SQUARES_X, ip.SQUARES_Y, ip.SQUARES_LENGTH,
                                               ip.MARKER_LENGTH, "L")
         turntable_L.calibrate()
 
-        turntable_R = ct.TurnTableCalibration(ip.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_R,
+        turntable_R = cal.TurnTableCalibration(ip.TURNTABLE_CALIBRATION_DATA_DIRECTORY, cam_int_R,
                                               cam_dist_R, ip.SQUARES_X, ip.SQUARES_Y, ip.SQUARES_LENGTH,
                                               ip.MARKER_LENGTH, "R")
         turntable_R.calibrate()

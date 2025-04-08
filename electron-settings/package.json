@@ -5,8 +5,8 @@
   "main": "electron/main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "webpack && electron-forge start",
-    "build": "webpack",
+    "start": "vite build && electron-forge start",
+    "build": "vite build",
     "package": "electron-forge package",
     "make": "electron-forge make"
   },
@@ -26,9 +26,11 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.1",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
     "css-loader": "^7.1.2",
     "electron": "^35.1.4",
+    "electron-vite": "^3.1.0",
     "postcss": "^8.5.3",
     "postcss-loader": "^8.1.1",
     "style-loader": "^4.0.0",
@@ -37,6 +39,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
+    "vite": "^6.2.5",
     "webpack": "^5.98.0",
     "webpack-cli": "^6.0.1"
   },

@@ -53,7 +53,7 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadFile(path.join(__dirname, '../src/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
 }
 
 // Set up IPC handlers
@@ -65,7 +65,7 @@ ipcMain.handle('save-settings', (_, newSettings) => {
     return saveSettings(newSettings);
 });
 
-ipcMain.on('show-settings', (event) => {
+ipcMain.on('show-settings', () => {
     // Implement the logic to show settings
 });
 
