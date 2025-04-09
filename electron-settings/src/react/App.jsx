@@ -1,13 +1,32 @@
-import React, {useState} from "react";
-import SettingsPopup from "./components/SettingsPopup";
-import TopBar from "./components/Topbar";
+import React, {useState} from 'react';
+import TopBar from './components/TopBar';
+import SettingsPopup from './components/SettingsPopup';
 
 const App = () => {
     const [showSettings, setShowSettings] = useState(false);
+    const [pythonResult, setPythonResult] = useState(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     const handleSettingsClick = () => {
         window.electronAPI.showSettings();
         setShowSettings(true);
+    };
+
+    const handleRunPython = async () => {
+        try {
+            setIsLoading(true);
+            const result = await window.electronAPI.runPython({
+                test: true,
+                message: "Hello from React!"
+            });
+            console.log("Python script result:", result);
+            setPythonResult(result);
+        } catch (error) {
+            console.error("Failed to run Python script:", error);
+            setPythonResult({error: error.toString()});
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -23,6 +42,24 @@ const App = () => {
                             This is an Electron app built with React and shadcn UI. Use the settings icon in the
                             topbar to configure your application preferences.
                         </p>
+
+                        <div className="mt-4">
+                            <button
+                                onClick={handleRunPython}
+                                disabled={isLoading}
+                                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md transition-colors">
+                                {isLoading ? 'Running Python...' : 'Run Python Test'}
+                            </button>
+                        </div>
+
+                        {pythonResult && (
+                            <div className="mt-4 p-4 bg-gray-800 rounded-md">
+                                <h3 className="text-md font-medium text-purple-200 mb-2">Python Result:</h3>
+                                <pre className="text-xs text-gray-300 overflow-auto max-h-60">
+                                                {JSON.stringify(pythonResult, null, 2)}
+                                            </pre>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
