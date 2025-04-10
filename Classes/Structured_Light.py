@@ -3,7 +3,6 @@ import os
 import numpy as np
 import h5py
 import glob
-from Classes.Multicam import *
 from Classes.WX_capture import *
 
 class Structured_Light(Stereo):
@@ -22,7 +21,6 @@ class Structured_Light(Stereo):
         super().__init__()
         self.projector = None
         self.turntable = None
-        self.cameras = MultiCam()
 
     def load_images_into_dict(self,folder_path):
         """
@@ -94,8 +92,6 @@ class Structured_Light(Stereo):
         images.append(image_dict)
         return images
 
-    def load_cams_from_file(self, filename):
-        self.cameras.load_cams_from_file(filename)
 
 
 

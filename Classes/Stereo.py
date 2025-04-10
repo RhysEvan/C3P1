@@ -4,6 +4,7 @@ import h5py
 import os
 import matplotlib.pyplot as plt
 from PyCamCalib.core.calibration import *
+from Classes.Multicam import *
 
 class Stereo:
     """
@@ -18,13 +19,17 @@ class Stereo:
         """
         self.camera_intrinsics = [] # list of cameraparameters (pycamcalib)
         self.camera_extrinsics = []
-        self.cameras = []
         self.rays = []
 
         self.INTRINSIC_CALIBRATION_DATA_DIRECTORY = None
         self.checkerboard_size = 30
         self.boardsize = (8,11)
         self.H = None
+
+        self.cameras = MultiCam()
+
+    def load_cams_from_file(self, filename):
+        self.cameras.load_cams_from_file(filename)
 
     def transform_rays_to_world_coordinates(self):
         """
