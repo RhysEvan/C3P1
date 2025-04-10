@@ -9,48 +9,32 @@ import numpy as np
 
 from threading import Thread, Event
 
-def show_camera_feed(cameras, texture_camera, dimensions, stop_event):
+def show_camera_feed(cameras, dimensions, stop_event):
     if len(cameras) == 0:
         print('something is wrong, no cameras were given')
         return
 
     while not stop_event.is_set():
-        # Capture and display frames from cameras
         for i, camera in enumerate(cameras):
 
             frame = camera.GetFrame()
             frame = frame.astype(np.uint8)
 
-            # Convert to BGR for display
-            bgr_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-            bgr_frame[frame <= 5] = [255, 0, 0]
-            bgr_frame[frame >= 250] = [0, 0, 255]
+            if frame.ndim == 2:
+                bgr_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+                bgr_frame[frame <= 5] = [255, 0, 0]
+                bgr_frame[frame >= 250] = [0, 0, 255]
+            elif frame.ndim == 3:
+                bgr_frame = frame
+            else:
+                raise ValueError("Unsupported frame format")
 
-            # Resize to fit the specified dimensions
             bgr_frame = cv2.resize(bgr_frame, dimensions[i], interpolation=cv2.INTER_AREA)
 
-            # Show in OpenCV window
             window_name = 'Camera Feed' if len(cameras) == 1 else f'Camera Feed {i+1}'
             cv2.imshow(window_name, bgr_frame)
 
-        ret, frame = texture_camera.read()
-        if not ret:
-            print("Frame not captured correctly.")
-            break
-        frame = frame.astype(np.uint8)
-
-        # Convert to BGR for display
-        bgr_frame[frame <= 5] = [255, 0, 0]
-        bgr_frame[frame >= 250] = [0, 0, 255]
-
-        # Resize to fit the specified dimensions
-        bgr_frame = cv2.resize(bgr_frame, dimensions, interpolation=cv2.INTER_AREA)
-
-        # Show in OpenCV window
-        cv2.imshow(window_name, bgr_frame)
-
-        # OpenCV waits for a short period, allows Pygame events to be processed
-        if cv2.waitKey(1) & 0xFF == 13:  # Break loop on Enter key
+        if cv2.waitKey(1) & 0xFF == 13:
             stop_event.set()
             break
 
@@ -65,10 +49,8 @@ def pygame_event_loop(stop_event):
         time.sleep(0.01)  # Small delay to reduce CPU usage
 
 def get_dataset_name(base_name):
-    # Remove the file extension
     base_name = base_name.rsplit('.', 1)[0]
     parts = base_name.split('_')
-    # Check if the last part is numeric
     if parts[-1].isdigit():
         parts = parts[:-1]
     if len(parts) > 2:
@@ -77,11 +59,13 @@ def get_dataset_name(base_name):
         return f"{parts[0]}_{parts[1]}"
     return base_name
 
-def capture_feed(screen, file_path, cameras, texture_camera, h5_file, gamma = False):
+def capture_feed(screen, file_path, cameras, h5_file, gamma = False):
     if len(cameras) == 0:
         print('something is wrong, no cameras were given')
         return
     pygame.event.get()
+    texture_frame = None
+    key = ""
 
     for _, img_path in enumerate(glob.glob(os.path.join(file_path, '*'))):
         if "tiff" not in img_path:
@@ -94,7 +78,11 @@ def capture_feed(screen, file_path, cameras, texture_camera, h5_file, gamma = Fa
             time.sleep(0.16)
 
             for i, camera in enumerate(cameras):
+                if camera == cameras[-1]:
+                    continue
+
                 frame = camera.GetFrame()
+                
                 if frame.dtype != np.uint8 and gamma == False:
                     frame = (frame - frame.min()) / (frame.max() - frame.min())
                     frame = (frame * 255).astype(np.uint8)
@@ -104,14 +92,16 @@ def capture_feed(screen, file_path, cameras, texture_camera, h5_file, gamma = Fa
 
                 if len(cameras) == 1:
                     key = f"{dataset_name}"
-                elif len(cameras) == 2 and i == 0:
+                elif len(cameras) == 3 and i == 0:
                     key = f"L_{dataset_name}"
-                elif len(cameras) == 2 and i == 1:
+                elif len(cameras) == 3 and i == 1:
                     key = f"R_{dataset_name}"
 
                 if "white" in dataset_name and i == 1:
                     rgb_key = "RGB_white"
-                    _, texture_frame = texture_camera.read()
+                    texture_frame = cameras[-1].GetFrame()
+                else:
+                    rgb_key = None
 
                 if key not in h5_file:
                     initial_shape = (0, 1536, 2048)
@@ -122,20 +112,21 @@ def capture_feed(screen, file_path, cameras, texture_camera, h5_file, gamma = Fa
                 dataset = h5_file[key]
                 dataset.resize((dataset.shape[0] + 1, 1536, 2048))
                 dataset[-1, :, :] = frame
+                
+                if rgb_key is not None:
+                    if rgb_key not in h5_file:
+                        shape = texture_frame.shape
+                        initial_shape = (0, shape[0], shape[1], shape[2])
+                        max_shape = (None, shape[0], shape[1], shape[2])
+                        chunks = (1, shape[0], shape[1], shape[2])
+                        h5_file.create_dataset(rgb_key, shape=initial_shape,
+                                            maxshape=max_shape, chunks=chunks, dtype=np.uint8)
 
-                if rgb_key not in h5_file:
-                    shape = texture_frame.shape
-                    initial_shape = (0, shape[0], shape[1])
-                    max_shape = (None, shape[0], shape[1])
-                    chunks = shape
-                    h5_file.create_dataset(key, shape=initial_shape,
-                                           maxshape=max_shape, chunks=chunks, dtype=np.uint8)
+                    rgb_dataset = h5_file[rgb_key]
+                    rgb_dataset.resize((rgb_dataset.shape[0] + 1, shape[0], shape[1], shape[2]))
+                    rgb_dataset[-1, :, :, :] = texture_frame
 
-                dataset = h5_file[rgb_key]
-                dataset.resize((dataset.shape[0] + 1, shape[0], shape[1]))
-                dataset[-1, :, :] = texture_frame
-
-def turntable_capture(screen, file_path, cameras, texture_camera, store_path,
+def turntable_capture(screen, file_path, cameras, store_path,
                       range_steps, serial_port='COM7', baudrate=115200):
     """
     Rotates the motor in equal steps based on the specified range.
@@ -145,7 +136,7 @@ def turntable_capture(screen, file_path, cameras, texture_camera, store_path,
     :param baudrate: The baud rate for serial communication.
     """
 
-    ser = serial.Serial(serial_port, baudrate, timeout=1)  # Increased timeout to 1 second
+    ser = serial.Serial(serial_port, baudrate, timeout=1)
     print(ser)
     print("Serial connection established")
     time.sleep(2)
@@ -154,7 +145,7 @@ def turntable_capture(screen, file_path, cameras, texture_camera, store_path,
         h5_path = create_incremented_h5(store_path, "scan")
         with h5py.File(h5_path, 'a') as h5_file:
             angle_step = 360 / range_steps
-            capture_feed(screen, file_path, cameras, texture_camera, h5_file)
+            capture_feed(screen, file_path, cameras, h5_file)
             angle = angle_step * (j+1)
             print(f"Step {j + 1}/{range_steps}: Rotating to {angle} degrees")
             send_motor_command(ser, angle)
@@ -199,7 +190,7 @@ def send_motor_command(ser, angle):
     except serial.SerialException as e:
         print(f"Error: {e}")
 
-def graycode_data_capture(file_path, cameras, texture_camera, dimensions, store_path, range_steps, gamma = False):
+def graycode_data_capture(file_path, cameras, dimensions, store_path, range_steps, gamma = False):
     pygame.init()
     display_info = pygame.display.Info()
     num_displays = pygame.display.get_num_displays()
@@ -223,7 +214,7 @@ def graycode_data_capture(file_path, cameras, texture_camera, dimensions, store_
     thread_pygame_events.start()
 
     # Start camera feed thread
-    thread_camera_feed = Thread(target=show_camera_feed, args=(cameras, texture_camera, dimensions, stop_event))
+    thread_camera_feed = Thread(target=show_camera_feed, args=(cameras, dimensions, stop_event))
     thread_camera_feed.start()
 
     thread_camera_feed.join()

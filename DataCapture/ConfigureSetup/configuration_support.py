@@ -27,7 +27,12 @@ def show_camera_feed_with_marker(cameras, dimensions, stop_event):
             frame = frame.astype(np.uint8)
 
             # Convert to BGR for display
-            bgr_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+            if len(frame.shape) == 2:
+                bgr_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+            elif frame.shape[2] == 3:
+                bgr_frame = frame
+            else:
+                raise ValueError("Unsupported frame format")
 
             # Draw marker in the center of the frame
             center_x, center_y = bgr_frame.shape[1] // 2, bgr_frame.shape[0] // 2

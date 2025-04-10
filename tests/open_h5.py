@@ -67,7 +67,7 @@ def return_data(h5_file_path):
 
 
 # Example usage
-h5_file_path = r'C:\Users\InViLab\Desktop\3-View_Application\CPC_CamProCam_UAntwerp\static\1_calibration_data\turntable\scan.h5'  # Replace with your H5 file path
-save_path = r'C:\Users\InViLab\Desktop\3-View_Application\CPC_CamProCam_UAntwerp\static\1_calibration_data\turntable/'
-visualize_and_save_first_images(h5_file_path, save_path)
-# return_data(h5_file_path)
+h5_file_path = r'C:\Users\mheva\OneDrive\Bureaublad\GitHub\C3P1\static\1_calibration_data\stereo_parameters.h5'  # Replace with your H5 file path
+# save_path = r'C:\Users\InViLab\Desktop\3-View_Application\CPC_CamProCam_UAntwerp\static\1_calibration_data\turntable/'
+# visualize_and_save_first_images(h5_file_path, save_path)
+return_data(h5_file_path)

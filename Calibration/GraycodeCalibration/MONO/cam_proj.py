@@ -123,7 +123,7 @@ class MonoCalibration():
     def calibration_mono_loading(self, path, identifier = None):
         files = glob.glob(self.calibration_data_directory + path)
         # Define the substrings to be excluded
-        excluded_substrings = ["white", "black"]
+        excluded_substrings = ["pattern_white", "pattern_black"]
 
         # Initialize a list to hold the arrays from each HDF5 file
         decoded_calibration_hor_scene = []
@@ -148,9 +148,9 @@ class MonoCalibration():
 
                 # Iterate through scene_data dictionary
                 for key, value in scene_data.items():
-                    if 'black' in key:
+                    if 'pattern_black' in key:
                         black_array = value
-                    elif 'white' in key:
+                    elif 'pattern_white' in key:
                         white_array = value
 
                 matched_keys = [

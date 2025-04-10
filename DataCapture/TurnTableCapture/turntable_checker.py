@@ -22,9 +22,14 @@ def show_camera_feed(cameras, dimensions, stop_event):
             frame = frame.astype(np.uint8)
 
             # Convert to BGR for display
-            bgr_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-            bgr_frame[frame <= 5] = [255, 0, 0]
-            bgr_frame[frame >= 250] = [0, 0, 255]
+            if frame.ndim == 2:
+                bgr_frame = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
+                bgr_frame[frame <= 5] = [255, 0, 0]
+                bgr_frame[frame >= 250] = [0, 0, 255]
+            elif frame.ndim == 3:
+                bgr_frame = frame
+            else:
+                raise ValueError("Unsupported frame format")
 
             # Resize to fit the specified dimensions
             bgr_frame = cv2.resize(bgr_frame, dimensions[i], interpolation=cv2.INTER_AREA)
@@ -48,6 +53,9 @@ def capture_feed(angle, cameras, h5_file):
     dataset_name = str(angle)
 
     for i, camera in enumerate(cameras):
+        if len(cameras) == 3:
+            if camera == cameras[-1]:
+                continue
         frame = camera.GetFrame()
         if frame.dtype != np.uint8:
             frame = (frame - frame.min()) / (frame.max() - frame.min())
@@ -58,9 +66,9 @@ def capture_feed(angle, cameras, h5_file):
 
         if len(cameras) == 1:
             key = f"{dataset_name}"
-        elif len(cameras) == 2 and i == 0:
+        elif len(cameras) == 3 and i == 0:
             key = f"L_{dataset_name}"
-        elif len(cameras) == 2 and i == 1:
+        elif len(cameras) == 3 and i == 1:
             key = f"R_{dataset_name}"
 
         if key not in h5_file:

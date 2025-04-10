@@ -1,95 +1,127 @@
-import wx
-import os
-import glob
-from PIL import Image
+# import wx
+# import os
+# import glob
+# from PIL import Image
 import numpy as np
-import time
-import cv2
+# import time
+# import cv2
+import json
+from typing import Dict, Any, Optional, Union, List, Tuple
+
+from CameraModel import GenICamCamera
+from CameraModel.OpenCV.OpenCVCamera import OpenCVCamera
 
 class MultiCam:
-    def __init__(self, width=640, height=480):
+
+    def __init__(self, width=640, height=480,  camera_dictionary: Optional[Dict[str, Dict[str, Any]]] = None):
+
         self.width = width
         self.height = height
         self.frame_count = 0
-        self.cameras = []
+        self.captured_frames = []
+
+        if camera_dictionary is not None:
+            self.cameras = camera_dictionary
+        else:
+            self.cameras = {}
+        
         print("Initialized MultiCam")
-    def load_cams_from_file(self, file = 'camera_config.json'):
-        """
-        Load the cameras from a json file.
-        :param file: string to file (json) with camera info
-        :return: none
-        """
-        import json
-        from CameraModel import GenICamCamera
 
-        # Load the JSON file
-        with open(file, 'r') as json_file:
-            camera_data = json.load(json_file)
+    def load_cameras_from_file(self, filepath):
+        """Loads camera configuration from a JSON file and stores it in self.cameras."""
+        with open(filepath, 'r') as f:
+            data = json.load(f)
 
-        cameras = []
-        for cam_info in camera_data["cameras"]:
-            try:
-                camera = GenICamCamera()
-                error = camera.Open(cam_info["dev_id"])
-                if error:
-                    print(f"Error opening camera {cam_info['dev_id']}")
-                    continue
-                camera.SetParameterDouble("ExposureTime", cam_info["exposure"]) #0705 todo: load multiple exposures and set the class variable.
-                camera.Start()
-                cameras.append(camera)
-            except Exception as e:
-                print(f"Failed to load camera {cam_info['dev_id']}: {e}")
-        self.cameras = cameras
-        self.load_cams( cameras)
-        pass
-    def load_cams(self,cameras):
-        """
-        Load the cameras
-        :param cameras:     cameras = [cam_l, cam_r]
-        :type  cameras:     list of Genpycam objects
+        processed_data = {}
+        for key, camera in data.items():
+            camera_class = camera.get('camera_class')
+            if camera_class not in ['pleora', 'opencv']:
+                print(f"Warning: Unknown camera_class '{camera_class}' for camera {key}")
+                continue
+            elif camera_class in "pleora":
+                camera['camera_class'] = GenICamCamera("pleora")
+            elif camera_class in "opencv":
+                camera['camera_class'] = OpenCVCamera()
 
-        :return: none
-        """
-        #0705 todo: fix that this works for n-cams
-        fixed_width = 800
+            processed_data[key] = camera
 
-        frame_l = cameras[0].GetFrame()
-        frame_r = cameras[1].GetFrame()
-        (h_l, w_l) = frame_l.shape[:2]
-        (h_r, w_r) = frame_r.shape[:2] #0705 todo this parameter should be saved somewhere, now it is loaded from a file.
+        self.cameras = processed_data
 
-        ratio_l = fixed_width / float(w_l)
-        dim_l = (fixed_width, int(h_l * ratio_l))
-        ratio_r = fixed_width / float(w_r)
-        dim_r = (fixed_width, int(h_r * ratio_r))
+    def OpenCameras(self) -> None:
+        for val in self.cameras.values():
+            val['camera_class'].Open(val['camera_adress'])
 
-        dimensions = [dim_l, dim_r]
-        self.cameras = cameras
-        self.dimensions = dimensions
-        print(dimensions)
+    def GrabAllFrames(self, identities: List[str] = None) -> List[Tuple[str, np.array]]:
+        assert identities, (
+            f"Execution of code ceased due to identities being: {identities}\n"
+            "In the case of it being None, make sure to insert a list of the desired camera IDs.\n"
+            "In the case of it being [], make sure to write the necessary IDs in the list."
+        )
+        self.captured_frames = []
+        for camera in self.cameras.values():
+            if camera['identifier'] in identities:
+                frame = camera['camera_class'].GetFrame()
+                self.captured_frames.append((camera['identifier'], frame))
 
+        return self.captured_frames
 
-    def GetFrame(self):
-        print("MultiCam: Capturing frame...")
-        idx = 0
-        pil_images = []
+    def EditIntrinsicExposure(self, parameters: Union[int, List[int]] = 75000):
+        if len(parameters) == 1:
+            for val in self.cameras.values():
+                val['intrinsic_exposure'] = parameters
+        
+        elif len(parameters) == len(self.cameras.values()):
+            for i, val in enumerate(self.cameras.values()):
+                val['intrinsic_exposure'] = parameters[i]
 
-        for cam in self.cameras:
-            frame = cam.GetFrame()
-            # save the frame with indx_frame_count as grayscale image
-            # convert to RGB
-            # convert to PIL image
-            pil_image = Image.fromarray(frame)
-            pil_image = pil_image.convert("RGB")
-            # save the image
-            #pil_image.save(f"frame_{idx}_{self.frame_count}.png")
-            pil_images.append(pil_image)
+    def SetIntrinsicExposure(self) -> None:
+        for val in self.cameras.values():
+            self.setExposure(val['camera_class'], val['intrinsic_exposure'])
 
-            idx += 1
+    def EditExtrinsicExposure(self, parameters: Union[int, List[int]] = 75000):
+        if len(parameters) == 1:
+            for val in self.cameras.values():
+                val['extrinsic_exposure'] = parameters
+        
+        elif len(parameters) == len(self.cameras.values()):
+            for i, val in enumerate(self.cameras.values()):
+                val['extrinsic_exposure'] = parameters[i]
 
+    def SetExtrinsicExposure(self) -> None:
+        for i, val in enumerate(self.cameras.values()):
+            self.setExposure(val['camera_class'], val['extrinsic_exposure'])
 
-        self.frame_count += 1
-        return pil_images
+    def SetIntrinsicGain(self, parameters: Union[int, List[int]] = 75000,
+                         apply: bool = False) -> None:
+        if len(parameters) == 1:
+            for val in self.cameras.values():
+                val['intrinsic_gain'] = parameters
+                if apply:
+                    self.setExposure(val['camera_class'], parameters)
+        elif len(parameters) == len(self.cameras.values()):
+            for i, val in enumerate(self.cameras.values()):
+                val['intrinsic_gain'] = parameters[i]
+                if apply:
+                    self.setGain(val['camera_class'], parameters[i])
+
+    def SetExtrinsicGain(self, parameters: Union[int, List[int]] = 75000,
+                         apply: bool = False) -> None:
+        if len(parameters) == 1:
+            for val in self.cameras.values():
+                val['extrinsic_gain'] = parameters
+                if apply:
+                    self.setExposure(val['camera_class'], parameters)
+        elif len(parameters) == len(self.cameras.values()):
+            for i, val in enumerate(self.cameras.values()):
+                val['extrinsic_gain'] = parameters[i]
+                if apply:
+                    self.setGain(val['camera_class'], parameters[i])
+
+    def setExposure(self, camera, value) -> None:
+        camera.SetParameterDouble("ExposureTime", value)
+
+    def setGain(self, camera, value) -> None:
+        camera.SetParameterDouble("Gain", value)
 
     def Release(self):
         print("MultiCam: Releasing resources.")
@@ -105,3 +137,19 @@ class MultiCam:
         print("MultiCam: Destructor called.")
         for cam in self.cameras:
             cam.Close()
+
+
+if __name__ == "__main__":
+    # Replace this with the actual path to your JSON file
+    json_file_path = r"C:\Users\mheva\OneDrive\Bureaublad\GitHub\C3P1\Examples\example_config.json"
+
+    # Initialize MultiCam
+    multicam = MultiCam()
+
+    # Load the camera configurations
+    multicam.load_cameras_from_file(json_file_path)
+
+    # Print the resulting camera dictionary
+    print("Loaded Camera Configuration:")
+    for cam_id, cam_info in multicam.cameras.items():
+        print(f"{cam_id}: {cam_info}")

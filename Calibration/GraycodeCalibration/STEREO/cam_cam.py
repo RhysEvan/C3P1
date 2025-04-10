@@ -30,11 +30,14 @@ class StereoCalibration():
         # Calibrate each camera.
         self.left_camera_calibrator = CameraCalibrator()
         self.right_camera_calibrator = CameraCalibrator()
+        self.texture_camera_calibrator = CameraCalibrator()
+
         # Calibrate stereo configuration.
         self.stereo_calibrator = StereoCalibrator()
 
         self.white_images_l = self.file_loading("L_pattern_white", r'\scan_*.h5')
         self.white_images_r = self.file_loading("R_pattern_white", r'\scan_*.h5')
+        self.white_texture_images = self.file_loading("RGB_white", r'\scan_*.h5')
 
         self.black_images_l = self.file_loading("L_pattern_black", r'\scan_*.h5')
         self.black_images_r = self.file_loading("R_pattern_black", r'\scan_*.h5')
@@ -89,6 +92,7 @@ class StereoCalibration():
         """
         self.param_l = self.left_camera_calibrator.calibrate(self.white_images_l, self.chess_block_size)
         self.param_r = self.right_camera_calibrator.calibrate(self.white_images_r, self.chess_block_size)
+        self.param_texture = self.texture_camera_calibrator.calibrate(self.white_texture_images, self.chess_block_size)
 
     def calibrate_stereo(self):
         """
@@ -109,9 +113,23 @@ class StereoCalibration():
                                                              self.param_l,
                                                              self.param_r, self.chess_block_size, self.chess_shape)
         stereo_parameters.save_parameters("./static/1_calibration_data/stereo_parameters.h5")
-        self.visualize_detection()
+        self.visualize_detection(self.white_images_l, self.white_images_r)
 
-    def visualize_detection(self):
+        stereo_parameters = self.stereo_calibrator.calibrate(self.white_images_l,
+                                                        self.white_texture_images,
+                                                        self.param_l,
+                                                        self.param_texture, self.chess_block_size, self.chess_shape)
+        stereo_parameters.save_parameters("./static/1_calibration_data/texture_stereo_left_parameters.h5")
+        self.visualize_detection(self.white_images_l, self.white_texture_images)
+        
+        stereo_parameters = self.stereo_calibrator.calibrate(self.white_images_r,
+                                                        self.white_texture_images,
+                                                        self.param_r,
+                                                        self.param_texture, self.chess_block_size, self.chess_shape)
+        stereo_parameters.save_parameters("./static/1_calibration_data/texture_stereo_right_parameters.h5")
+        self.visualize_detection(self.white_images_r, self.white_texture_images)
+
+    def visualize_detection(self, image_set_1, image_set_2):
         """
         Final check up function to visualize all checkerboard captures to see whether
         all corners are detected.
@@ -124,28 +142,28 @@ class StereoCalibration():
         --------
         None
         """
-        for image_idx in range(self.white_images_l.shape[-1]):
-            image_1 = self.white_images_l[..., image_idx]
-            image_2 = self.white_images_r[..., image_idx]
+        for image_idx in range(image_set_1.shape[-1]):
+            image_1 = image_set_1[..., image_idx]
+            image_2 = image_set_2[..., image_idx]
             fig, axarr = plt.subplots(1, 2, constrained_layout=True)
             axarr[0].imshow(image_1)
             axarr[1].imshow(image_2)
             if image_idx in self.stereo_calibrator.indices:
                 feature_index = self.stereo_calibrator.indices.index(image_idx)
                 axarr[0].plot(self.stereo_calibrator.image_points_list_1[feature_index][:, 0],
-                              self.stereo_calibrator.image_points_list_1[feature_index][:, 1],
-                              '-o', color='lime')
+                            self.stereo_calibrator.image_points_list_1[feature_index][:, 1],
+                            '-o', color='lime')
                 axarr[1].plot(self.stereo_calibrator.image_points_list_2[feature_index][:, 0],
-                              self.stereo_calibrator.image_points_list_2[feature_index][:, 1],
-                              '-o', color='lime')
+                            self.stereo_calibrator.image_points_list_2[feature_index][:, 1],
+                            '-o', color='lime')
                 color = 'g'
             else:
                 axarr[0].plot(self.stereo_calibrator.feature_list_1[image_idx].image_points[:, 0],
-                              self.stereo_calibrator.feature_list_1[image_idx].image_points[:, 1],
-                              '-o', color='red')
+                            self.stereo_calibrator.feature_list_1[image_idx].image_points[:, 1],
+                            '-o', color='red')
                 axarr[1].plot(self.stereo_calibrator.feature_list_2[image_idx].image_points[:, 0],
-                              self.stereo_calibrator.feature_list_2[image_idx].image_points[:, 1],
-                              '-o', color='red')
+                            self.stereo_calibrator.feature_list_2[image_idx].image_points[:, 1],
+                            '-o', color='red')
                 color = 'r'
             fig.suptitle('Image nr ' + str(image_idx+1), color=color)
             axarr[0].get_xaxis().set_visible(False)

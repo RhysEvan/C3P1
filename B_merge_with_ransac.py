@@ -102,35 +102,58 @@ voxel_size = 3  # means 3cm for this dataset
 left_source, right_source, stereo_source, left_source_fpfh, right_source_fpfh, stereo_source_fpfh = \
     prepare_dataset(left_pc, right_pc, stereo_pc, voxel_size)
 
+# Track transformations
+transformations = []
+
+# Register left to right
 result_ransac = execute_global_registration(left_source, right_source,
                                             left_source_fpfh, right_source_fpfh,
                                             voxel_size)
+transformations.append(result_ransac.transformation)
 print(result_ransac)
 draw_registration_result(left_source, right_source, result_ransac.transformation)
 
 result_icp = refine_registration(left_source, right_source, left_source_fpfh, right_source_fpfh,
                                  voxel_size)
+transformations.append(result_icp.transformation)
 print(result_icp)
 draw_registration_result(left_pc, right_pc, result_icp.transformation)
-####################################################################
+
+# Register left to stereo
 result_ransac = execute_global_registration(left_source, stereo_source,
                                             left_source_fpfh, stereo_source_fpfh,
                                             voxel_size)
+transformations.append(result_ransac.transformation)
 print(result_ransac)
 draw_registration_result(left_source, stereo_source, result_ransac.transformation)
 
 result_icp = refine_registration(left_source, stereo_source, left_source_fpfh, stereo_source_fpfh,
                                  voxel_size)
+transformations.append(result_icp.transformation)
 print(result_icp)
 draw_registration_result(left_pc, stereo_pc, result_icp.transformation)
-####################################################################
+
+# Register right to stereo
 result_ransac = execute_global_registration(right_source, stereo_source,
                                             right_source_fpfh, stereo_source_fpfh,
                                             voxel_size)
+transformations.append(result_ransac.transformation)
 print(result_ransac)
 draw_registration_result(right_source, stereo_source, result_ransac.transformation)
 
 result_icp = refine_registration(right_source, stereo_source, right_source_fpfh, stereo_source_fpfh,
                                  voxel_size)
+transformations.append(result_icp.transformation)
 print(result_icp)
 draw_registration_result(right_pc, stereo_pc, result_icp.transformation)
+
+# Merge all point clouds into one
+final_pc = copy.deepcopy(left_pc)
+final_pc += right_pc.transform(transformations[1])
+final_pc += stereo_pc.transform(transformations[3])
+
+# Save the final merged point cloud to a file
+o3d.io.write_point_cloud("merged_final.ply", final_pc)
+
+# Save the transformations to a file
+np.savez("transformations.npz", transformations=transformations)

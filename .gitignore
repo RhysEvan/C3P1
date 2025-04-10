@@ -2,7 +2,6 @@ distorted/
 temp/data/
 
 RenderOption_2024-08-14-14-26-33.json
-inputparameters.py
 
 *.npy
 *.npz
@@ -11,6 +10,7 @@ inputparameters.py
 *.pyc
 *.jpg
 *.png
+*.json
 
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
 # Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839

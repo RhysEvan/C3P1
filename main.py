@@ -14,9 +14,9 @@ try:
 except:
     print("no luck with module")
 import StructuredLight.Graycode as slg
-import Calibration as cg
-import Calibration as ci
-import Calibration as ct  
+import Calibration.GraycodeCalibration as cg
+import Calibration.IntrinsicCalirbration as ci
+import Calibration.TurnTableCalibration as ct  
 import DataCapture as dc
 import Triangulation as tl
 
@@ -35,9 +35,10 @@ class Mapping():
     class initiation to execute a 3d scan
     """
     #TODO: yaml magic
-    def __init__(self, folder_name_pattern, cameras, texture_camera, dimensions, folder_name_capture,
+    def __init__(self, folder_name_pattern, cameras, dimensions, folder_name_capture,
                  range_steps_calib, range_steps_scan, com_port='COM4', obj_path=None, exposure=2500,
                  exposure_intrinsic=100000):
+        self.cameras = cameras
         self.decoder = slg.Decode_Gray()
 
         ##########################################################################################
@@ -54,9 +55,9 @@ class Mapping():
         ######################### center camera's to projector ###################################
         ##########################################################################################
         # TODO see if calib is done recently or have a request notice to determine if the following steps should be done
-        input("""Before the next step please verify that the projector is connected and turned on.
-Use the camera windows to align the camera's to the best of you capabilities with the black cross projected. Press Enter to continue""")
-        dc.innitiate_support(cameras, dimensions)
+#         input("""Before the next step please verify that the projector is connected and turned on.
+# Use the camera windows to align the camera's to the best of you capabilities with the black cross projected. Press Enter to continue""")
+#         dc.innitiate_support(cameras, dimensions)
 
         ##########################################################################################
         ######################### calibrate camera intrinsics ####################################
@@ -72,8 +73,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
 
         if len(calibrated_data) == 0:
             dc.intrinsic_calibration_capture(INTRINSIC_CALIBRATION_DATA_DIRECTORY,
-                                             cameras, texture_camera,
-                                             identifier=["L", "R"])
+                                             cameras, identifier=["L", "R", "Texture"])
 
         calibrated_data = []
         calibrated_data = glob.glob(INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/*parameters.h5")
@@ -95,7 +95,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         if len(calibration_data) == 0:
             time_hold = input("turn on projector then press enter")
             for _ in range(20):
-                dc.graycode_data_capture(folder_name_pattern, cameras, texture_camera,
+                dc.graycode_data_capture(folder_name_pattern, cameras,
                                          dimensions, folder_name_capture, 0)
 
         calibrated_data = []
@@ -129,7 +129,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         calibrated_data = glob.glob(obj_path + "*.h5")
         input("please turn on projector")
         if len(calibrated_data) == 0:
-            dc.graycode_data_capture(folder_name_pattern, cameras, texture_camera, dimensions, obj_path,
+            dc.graycode_data_capture(folder_name_pattern, cameras, dimensions, obj_path,
                                      range_steps_scan)
 
         self.stereo_triangulate = tl.StereoTriangulator(CALIBRATION_DATA_DIRECTORY)
@@ -190,7 +190,7 @@ Use the camera windows to align the camera's to the best of you capabilities wit
         Execute calibration
         """
         #TODO: yaml magic
-        image_count = 40
+        image_count = 15
         frame_list = list(range(image_count))
         self.intrinsic_calibration_L = self.quality_optimisation(
             ci.IntrisicCalibration,
@@ -229,18 +229,17 @@ Use the camera windows to align the camera's to the best of you capabilities wit
             WIDTH,
             HEIGHT,
             IMAGE_RESOLUTION,
-            identifier="RGB",
+            identifier="Texture",
             format_type="int_",
             visualize=True
         )
 
     def stereo_calibration(self):
-        h5_path_L = INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/L_camera_intrinsic_parameters.h5"
-        h5_path_R = INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/R_camera_intrinsic_parameters.h5"
+        h5_path_L = INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/L_camera_intrinsic_parameters.h5"
+        h5_path_R = INTRINSIC_CALIBRATION_DATA_DIRECTORY+"/R_camera_intrinsic_parameters.h5"
         cam_int_L, cam_dist_L = self.load_parameters(h5_path_L)
         cam_int_R, cam_dist_R = self.load_parameters(h5_path_R)
 
-        #TODO: yaml magic
         image_count = 20
         frame_list = list(range(image_count))
 
@@ -251,11 +250,11 @@ Use the camera windows to align the camera's to the best of you capabilities wit
             CALIBRATION_DATA_DIRECTORY,
             CHESS_SHAPE,
             CHESS_BLOCK_SIZE,
-            WIDTH, HEIGHT,
+            WIDTH,HEIGHT,
             IMAGE_RESOLUTION,
             cam_int_L, cam_dist_L,
             identifier="L",
-            format_type="mono_"
+            format_type = "mono_"
         )
 
         self.calib_mono_right = self.quality_optimisation(
@@ -265,17 +264,17 @@ Use the camera windows to align the camera's to the best of you capabilities wit
             CALIBRATION_DATA_DIRECTORY,
             CHESS_SHAPE,
             CHESS_BLOCK_SIZE,
-            WIDTH, HEIGHT,
+            WIDTH,HEIGHT,
             IMAGE_RESOLUTION,
             cam_int_R, cam_dist_R,
             identifier="R",
-            format_type="mono_"
+            format_type = "mono_"
         )
 
         self.calib_stereo = cg.StereoCalibration(self.decoder,
-                                                 CALIBRATION_DATA_DIRECTORY,
-                                                 CHESS_SHAPE,
-                                                 CHESS_BLOCK_SIZE)
+                                              CALIBRATION_DATA_DIRECTORY,
+                                              CHESS_SHAPE,
+                                              CHESS_BLOCK_SIZE)
 
     def turntable_calibration(self):
         h5_path_L = INTRINSIC_CALIBRATION_DATA_DIRECTORY + "/L_camera_intrinsic_parameters.h5"
@@ -386,6 +385,15 @@ Use the camera windows to align the camera's to the best of you capabilities wit
                     print(f"Updated frame list: {frame_list}")
                 except ValueError:
                     print("Invalid input. Please enter comma-separated integers.")
+    def Close(self):
+        for cam in self.cameras:
+            cam.Close()
+        self.cameras = []
+        print('MultiCam: Closed all cameras.')
+    def __del__(self):
+        print("MultiCam: Destructor called.")
+        for cam in self.cameras:
+            cam.Close()
 
 
 def save_selected_frames(type_format, identifier, frame_list):
@@ -399,7 +407,7 @@ if __name__ == "__main__":
     #TODO: yaml magic
     folder_name_pattern = r"./static/0_projection_pattern/"
     folder_name_capture = r"./static/1_calibration_data/"
-    OBJECT_PATH = r'.\static\2_object_data\Seppe/'
+    OBJECT_PATH = r'.\static\2_object_data\Bart/'
 
     #TODO: yaml magic
     range_steps_calib = 4  # 1 if no turn table
@@ -410,19 +418,23 @@ if __name__ == "__main__":
     gain = 3
     exposure_intrinsic = 75000
     exposure_procam = 20000
+    #TODO: yaml magic
+    camera_id = "2BA200003744"
+    cam_l = GenICamCamera('pleora')
+    cam_l.Open(camera_id)
+
+    #TODO: yaml magic
+    camera_id = "2BA200003745"
+    cam_r = GenICamCamera('pleora')
+    cam_r.Open(camera_id)
+
+    #TODO: yaml magic
+    camera_id = "2BA200004266"
+    cam_texture = GenICamCamera('pleora')
+    cam_texture.Open(camera_id)
+
+    cameras = [cam_l, cam_r, cam_texture]
     try:
-        #TODO: yaml magic
-        camera_id = "2BA200003744"
-        cam_l = GenICamCamera('pleora')
-        cam_l.Open(camera_id)
-
-        #TODO: yaml magic
-        camera_id = "2BA200003745"
-        cam_r = GenICamCamera('pleora')
-        cam_r.Open(camera_id)
-
-        cameras = [cam_l, cam_r]
-
         for cam in cameras:
             cam.SetParameterDouble("ExposureTime", exposure_procam)
             cam.SetParameterDouble("Gain", gain)
@@ -432,27 +444,28 @@ if __name__ == "__main__":
         fixed_width = 800
         frame_l = cam_l.GetFrame()
         frame_r = cam_r.GetFrame()
+        frame_tex = cam_texture.GetFrame()
         (h_l, w_l) = frame_l.shape[:2]
         (h_r, w_r) = frame_r.shape[:2]
+        (h_tex, w_tex) = frame_tex.shape[:2]
 
         ratio_l = fixed_width / float(w_l)
         dim_l = (fixed_width, int(h_l * ratio_l))
+        
         ratio_r = fixed_width / float(w_r)
         dim_r = (fixed_width, int(h_r * ratio_r))
 
-        dimensions = [dim_l, dim_r]
+        ratio_tex = fixed_width / float(w_tex)
+        dim_tex = (fixed_width, int(h_tex * ratio_tex))
+
+        dimensions = [dim_l, dim_r, dim_tex]
         print(dimensions)
+    
     except:
-        cameras = []
-        #TODO: yaml magic
-        dimensions = [(640, 480), (640, 480)]
-
-    texture_camera = cv2.VideoCapture(0)  # 0 for the default camera
-
-    if not texture_camera.isOpened():
-        print("Error: Could not open camera.")
-
-    MAP = Mapping(folder_name_pattern, cameras, texture_camera, dimensions,
+        dimensions = [(640,480), (640,480), (640,480)]
+        print(dimensions)
+    
+    MAP = Mapping(folder_name_pattern, cameras, dimensions,
                   folder_name_capture, range_steps_calib, range_steps_scan, com_port,
                   OBJECT_PATH, exposure_procam, exposure_intrinsic)
 

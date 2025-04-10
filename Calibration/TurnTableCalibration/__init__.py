@@ -1,1 +1,1 @@
-from .cam_calib import IntrisicCalibration
+from .TurntableAxis import TurnTableCalibration
