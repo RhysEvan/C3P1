@@ -50,6 +50,19 @@ class GrayCodeMultiCam(Structured_Light):
 
         pass
 
+    def decode_patterns_from_image_folder(self, folder_path):
+        """
+        \ingroup structured_light
+        \brief Decodes the captured Gray Code patterns to obtain the corresponding code for each pixel.
+
+        :param folder_path: The path to the folder containing the captured images.
+        :return: Decoded patterns.
+        """
+        # Implement pattern decoding logic here
+        self.Images = self.load_images_into_dict(folder_path)
+
+        self.decode_patterns()
+        return self.left_horizontal_decoded_image, self.left_vertical_decoded_image, self.right_horizontal_decoded_image, self.right_vertical_decoded_image
     def decode_patterns_from_file(self, captured_images_path):
         """
         \ingroup structured_light
@@ -401,11 +414,14 @@ if __name__ == "__main__":
     matplotlib.use('qtagg')
 
     scanner = GrayCodeMultiCam()
-    scanner.generate_patterns(width=1280, height=720, projector_directory=r"../Examples/static/0_projection_pattern")
+    scanner.Decoder.BLACKTHR = 20
+    #scanner.generate_patterns(width=1280, height=720, projector_directory=r"../Examples/static/0_projection_pattern")
     scanner.load_intrinsic_calibration(r"../Examples/static/1_calibration_data/intrinsic")
     scanner.load_extrinsic_calibration(r"../Examples/static/1_calibration_data/extrinsic")
-    scanner.decode_patterns_from_file(captured_images_path=r"..\Examples\static\2_object_data\Seppe/")
+    #scanner.decode_patterns_from_file(captured_images_path=r"..\Examples\static\2_object_data\Seppe/")
+    scanner.decode_patterns_from_image_folder(r"../Examples/static/2_object_data3")
+
     xyz,d = scanner.triangulate()
-    scanner.filter_and_plot_pointcloud(xyz,d, treshold= 0.5)
-    scanner.save_as_ply_file('test2.ply', xyz, d,treshold = 0.5)
+    scanner.filter_and_plot_pointcloud(xyz,d, treshold= 5)
+    scanner.save_as_ply_file('test2.ply', xyz, d,treshold =5)
     pass

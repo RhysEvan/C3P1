@@ -24,6 +24,76 @@ class Structured_Light(Stereo):
         self.turntable = None
         self.cameras = MultiCam()
 
+    def load_images_into_dict(self,folder_path):
+        """
+        Load images from a folder into a dictionary based on their filenames.
+
+        :param folder_path: Path to the folder containing the images.
+        :return: A dictionary with categorized images.
+        """
+        image_dict = {
+            "L_pattern_H_I": [],
+            "L_pattern_H": [],
+            "L_pattern_V_I": [],
+            "L_pattern_V": [],
+            "L_pattern_black": [],
+            "L_pattern_white": [],
+            "R_pattern_H_I": [],
+            "R_pattern_H": [],
+            "R_pattern_V_I": [],
+            "R_pattern_V": [],
+            "R_pattern_black": [],
+            "R_pattern_white": [],
+        }
+
+        # Iterate through all image files in the folder
+        # Define subfolder paths
+        subfolders = {
+            "L": os.path.join(folder_path, "0"),
+            "R": os.path.join(folder_path, "1"),
+        }
+
+        # Iterate through subfolders
+        # Iterate through subfolders
+        # Iterate through subfolders
+        import re
+
+        for prefix, subfolder in subfolders.items():
+            for file_path in glob.glob(os.path.join(subfolder, "*")):
+                filename = os.path.basename(file_path)
+
+                # Match the filename to the dictionary keys
+                for key in image_dict.keys():
+                    if key.replace(f"{prefix}_", "")+"_" in filename:
+                        image = cv2.imread(file_path)
+                        image = image[:,:,0]
+
+
+
+                        # convert to grayscale
+                        # if key does not contain "black" or "white" convert to grayscale
+
+
+                        #with opencv plot the image
+
+                        if image is not None:
+                            image_dict[key].append(image)
+                        break
+
+        # Convert lists to NumPy arrays with a new dimension
+        for key in image_dict.keys():
+            if image_dict[key]:
+                image_dict[key] = np.stack(image_dict[key], axis=0)
+            else:
+                image_dict[key] = None
+
+
+
+        #self.Images = image_dict
+        images = []
+        images.append(image_dict)
+        return images
+
     def load_cams_from_file(self, filename):
         self.cameras.load_cams_from_file(filename)
 
@@ -157,4 +227,5 @@ if __name__ == "__main__":
     Scanner = Structured_Light()
     Scanner.load_cams_from_file('camera_config.json')
     Scanner.plot_and_capture_pattern(r"C:\Users\Seppe\PycharmProjects\Cameratoolbox_dev\C3P1\Examples\static\0_projection_pattern",r"../Examples/static/2_object_data3")
+    Scanner.load_images_into_dict(r"../Examples/static/2_object_data3")
     Scanner.Close()

@@ -33,23 +33,24 @@ def show_camera_feed(cameras, texture_camera, dimensions, stop_event):
             window_name = 'Camera Feed' if len(cameras) == 1 else f'Camera Feed {i+1}'
             cv2.imshow(window_name, bgr_frame)
 
-        ret, frame = texture_camera.read()
-        if not ret:
-            print("Frame not captured correctly.")
-            break
-        frame = frame.astype(np.uint8)
+        if texture_camera is not None:
+            ret, frame = texture_camera.read()
+            if not ret:
+                print("Frame not captured correctly.")
+                break
+            frame = frame.astype(np.uint8)
 
-        # Convert to BGR for display
-        bgr_frame[frame <= 5] = [255, 0, 0]
-        bgr_frame[frame >= 250] = [0, 0, 255]
+            # Convert to BGR for display
+            bgr_frame[frame <= 5] = [255, 0, 0]
+            bgr_frame[frame >= 250] = [0, 0, 255]
 
-        # Resize to fit the specified dimensions
-        bgr_frame = cv2.resize(bgr_frame, dimensions, interpolation=cv2.INTER_AREA)
+            # Resize to fit the specified dimensions
+            bgr_frame = cv2.resize(bgr_frame, dimensions, interpolation=cv2.INTER_AREA)
 
-        # Show in OpenCV window
-        cv2.imshow(window_name, bgr_frame)
+            # Show in OpenCV window
+            cv2.imshow(window_name, bgr_frame)
 
-        # OpenCV waits for a short period, allows Pygame events to be processed
+            # OpenCV waits for a short period, allows Pygame events to be processed
         if cv2.waitKey(1) & 0xFF == 13:  # Break loop on Enter key
             stop_event.set()
             break
@@ -111,16 +112,20 @@ def capture_feed(screen, file_path, cameras, texture_camera, h5_file, gamma = Fa
 
                 if "white" in dataset_name and i == 1:
                     rgb_key = "RGB_white"
-                    _, texture_frame = texture_camera.read()
+                    if texture_camera is not None:
+                        _, texture_frame = texture_camera.read()
 
                 if key not in h5_file:
-                    initial_shape = (0, 1536, 2048)
-                    max_shape = (None, 1536, 2048)
-                    chunks = (1, 1536, 2048)
+                    shape = frame.shape
+                    initial_shape = (0, shape[0], shape[1])
+                    max_shape = (None, shape[0], shape[1])
+                    chunks = (1, shape[0], shape[1])
+
                     h5_file.create_dataset(key, shape=initial_shape,
-                                           maxshape=max_shape, chunks=chunks, dtype=np.uint8)
+                                            maxshape=max_shape, chunks=chunks, dtype=np.uint8)
                 dataset = h5_file[key]
-                dataset.resize((dataset.shape[0] + 1, 1536, 2048))
+                dataset.resize((dataset.shape[0] + 1, shape[0], shape[1]))
+
                 dataset[-1, :, :] = frame
 
                 if rgb_key not in h5_file:
@@ -234,7 +239,7 @@ def graycode_data_capture(file_path, cameras, texture_camera, dimensions, store_
         h5_path = create_incremented_h5(store_path, "scan")
         with h5py.File(h5_path, 'a') as h5_file:
             # Start the image feed thread
-            capture_feed(screen, file_path, cameras, h5_file, gamma)
+            capture_feed(screen, file_path, cameras,None, h5_file, gamma)
     else:
         turntable_capture(screen, file_path, cameras, store_path,
                           range_steps, 'COM3', 115200)

@@ -29,7 +29,7 @@ from DataCapture import innitiate_support
 from DataCapture import graycode_data_capture
 from DataCapture import intrinsic_calibration_capture
 from DataCapture import turntable_calibration_capture
-from Triangulation.Triangulation import MonoTriangulator, StereoTriangulator
+from Triangulation.GrayCodeTriangulate import MonoTriangulator, StereoTriangulator
 
 from inputparameters import PROJECTOR_DIRECTORY
 from inputparameters import CALIBRATION_DATA_DIRECTORY, INTRINSIC_CALIBRATION_DATA_DIRECTORY, TURNTABLE_CALIBRATION_DATA_DIRECTORY

@@ -19,6 +19,7 @@ class Decode_Gray():
         """
         self.array_hor_masked = []
         self.array_vert_masked = []
+        self.BLACKTHR = None
 
     def scene_decoder(self, item, identifier = None, visualize = False):
         """
@@ -56,9 +57,17 @@ class Decode_Gray():
                                                  55, 255,
                                                  cv.THRESH_BINARY)
 
+        if self.BLACKTHR is not None:
+            mask = white[0,:,:] -black[0,:,:]
+            # treshold to binary where mask <= self.BLACKTHR
+            binary_image = mask <= self.BLACKTHR
+            binary_image = binary_image.astype(bool)
+            return binary_image
+
         shadow_mask = np.empty(white.shape, dtype=object)
 
         shadow_mask = image_binary_all_white == image_binary_all_black
+
 
         return shadow_mask
 
@@ -66,6 +75,8 @@ class Decode_Gray():
         """
         Decodes scan_instance and applies mask to only keep necessary info.
         """
+        # set all reference mask to false
+
         mask = self.decode_process(scan_instance,
                                    inverse_scan_instance)
         if reference_mask.all() == None:

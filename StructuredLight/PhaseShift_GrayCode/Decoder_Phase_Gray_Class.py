@@ -9,6 +9,7 @@ from CameraModel import GenICamCamera
 import logging
 import torch
 
+
 class PhaseShifting:
     def __init__(self, width, height, step, gamma, output_dir, black_thr, white_thr, filter_size, input_prefix, config_file):
         self.WIDTH = width
@@ -129,6 +130,7 @@ class PhaseShifting:
                 err, proj_pix = self.graycode.getProjPixel(gc_imgs, x, y)
                 if not err:
                     gc_map[y, x, :] = np.array(proj_pix)
+
                     mask[y, x] = 255
 
         return gc_map, mask
@@ -692,6 +694,35 @@ class PhaseShifting:
                 f.write(str(cam_y) + ', ' + str(cam_x) + ', ' + str(disp_y) + ', ' + str(disp_x) + '\n')
 
         self.logger.info('Done')
+        return viz, res_list
+
+    def decode_patterns_from_image_folder(self, folder_path):
+        """
+        \ingroup structured_light
+        \brief Decodes the captured Gray Code patterns to obtain the corresponding code for each pixel.
+
+        :param folder_path: The path to the folder containing the captured images.
+        :return: Decoded patterns.
+        """
+        # Implement pattern decoding logic here
+        self.INPUTPRE = os.path.join(folder_path, '0')
+        imgs= self.load_images_from_folder()
+
+        vis, res = self.decode(imgs)
+        self.left_horizontal_decoded_image = vis[:,:,0].astype(np.uint16)
+        self.left_vertical_decoded_image = vis[:,:,1].astype(np.uint16)
+
+        self.INPUTPRE = os.path.join(folder_path, '1')
+        imgs= self.load_images_from_folder()
+
+        vis, res = self.decode(imgs)
+        self.right_horizontal_decoded_image = vis[:,:,0].astype(np.uint16)
+        self.right_vertical_decoded_image = vis[:,:,1].astype(np.uint16)
+
+
+
+        return self.left_horizontal_decoded_image, self.left_vertical_decoded_image, self.right_horizontal_decoded_image, self.right_vertical_decoded_image
+
 
 
 if __name__ == '__main__':
@@ -703,17 +734,18 @@ if __name__ == '__main__':
     output_dir = 'output'
     black_thr = 15
     white_thr = 15
-    filter_size = 2
-    input_prefix = r"C:\Users\Seppe\PycharmProjects\phase\phase-shifting\sample_data\objectS_test\moved_fixedgray"
+    filter_size = 1
+    input_prefix = r"C:\Users\Seppe\PycharmProjects\phase\phase-shifting\sample_data\objectS3\0"
     config_file = r"C:\Users\Seppe\PycharmProjects\phase\phase-shifting\sample_data\objectS\config.xml"
-
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
     ps = PhaseShifting(width, height, step, gamma, output_dir, black_thr, white_thr, filter_size, input_prefix, config_file)
     #ps.generate()
 
+
     ps.set_decode_settings()
+    ps.decode_patterns_from_image_folder(r"C:\Users\Seppe\PycharmProjects\phase\phase-shifting\sample_data\objectS3")
     imgs = ps.load_images_from_folder()
     ps.OUTPUTDIR = os.path.join(input_prefix, 'results')
     ps.decode(imgs)

@@ -36,7 +36,7 @@ if __name__ == "__main__":
     #check if the folder exists
     if not os.path.exists(folder_name_capture):
         os.makedirs(folder_name_capture)
-    OBJECT_PATH = r'.\static\2_object_data\Seppe/'
+    OBJECT_PATH = r'.\static\2_object_data\Seppe3/'
     #check if the folder exists
     if not os.path.exists(OBJECT_PATH):
         os.makedirs(OBJECT_PATH)
@@ -65,13 +65,13 @@ if __name__ == "__main__":
     #GrayCodeScanner.load_cams([cam_l, cam_r])
     GrayCodeScanner.load_cams_from_file('camera_config.json')
     #GrayCodeScanner.load_cams_from_ids(['1AB22800147A', '1AB22800147B'],[exposure_intrinsic, exposure_intrinsic])
-    GrayCodeScanner.generate_projection_pattern()
+    #GrayCodeScanner.generate_projection_pattern()
     #GrayCodeScanner.center_cameras_to_projector()
     #GrayCodeScanner.calibrate_camera_intrinsics()
-    GrayCodeScanner.calibrate_camera_extrinsics()
+    #GrayCodeScanner.calibrate_camera_extrinsics()
     #GrayCodeScanner.calibrate_turntable_extrinsics()
     GrayCodeScanner.set_exposure_time(exposure_procam)
-    GrayCodeScanner.scan_object(obj_path=r"C:\Users\Seppe\PycharmProjects\Projector\CPC_CamProCam_UAntwerp\Examples\static\2_object_data2\Seppe/") #this does: capture_or_load_object_data(), calculate_pointcloud()
+    GrayCodeScanner.scan_object(obj_path=r"C:\Users\Seppe\PycharmProjects\Projector\CPC_CamProCam_UAntwerp\Examples\static\2_object_data2\Seppe3/") #this does: capture_or_load_object_data(), calculate_pointcloud()
 
     import open3d as o3d
     import numpy as np
