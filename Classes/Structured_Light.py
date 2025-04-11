@@ -203,19 +203,6 @@ class Structured_Light(Stereo):
                 continue
         return scenes
 
-    def Close(self):
-        pass
-
-        if hasattr(self.cameras, 'Close'):
-            self.cameras.Close()
-            print('Projector: Closed all cameras.')
-            self.cameras = []
-    def __del__(self):
-        # check if cameras have Close function
-        if hasattr(self.cameras, 'Close'):
-            print('Destructor: Closed all cameras.')
-
-            self.cameras.Close()
 
 
 if __name__ == "__main__":

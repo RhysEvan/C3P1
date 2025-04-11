@@ -8,11 +8,17 @@ from scipy.spatial import cKDTree
 from core_toolbox_python.Plucker.Line import *
 import math
 import logging
+import sys
+sys.path.append('Classes/GrayCode/process_frames_cpp')
+from Classes.proces_frames_cpp import process_frames_module as process_frames_module
+from Classes.correspondence import correspondence as correspondence
+from Classes.combined_corr_process import combined as combined
 
 import multiprocessing
-from DataCapture import graycode_data_capture
+#from DataCapture import graycode_data_capture
 from StructuredLight.Graycode.projector_image import *
-
+from Classes.GrayCode_additional_methods import _process_neighbor_search_numba, process_frames_numba,find_valid_neighbor_numba
+from Classes.GrayCode_additional_methods_torch import process_frames_optimized_pytorch
 
 
 class GrayCodeMultiCam(Structured_Light):
@@ -22,6 +28,10 @@ class GrayCodeMultiCam(Structured_Light):
 
     This class is a child of the Structured_Light class and includes methods for generating patterns, decoding patterns, and ray matching.
     """
+    process_frames_numba = process_frames_numba
+    _process_neighbor_search_numba = _process_neighbor_search_numba
+    find_valid_neighbor_numba = find_valid_neighbor_numba
+    process_frames_optimized_pytorch = process_frames_optimized_pytorch
 
     def __init__(self):
         """
@@ -29,6 +39,7 @@ class GrayCodeMultiCam(Structured_Light):
         \brief Initializes the GrayCodeMultiCam class.
         """
         super().__init__()
+        print('GrayCodeMultiCam initialized')
         self.Decoder = Decode_Gray()
         self.Images = []
 
@@ -244,6 +255,139 @@ class GrayCodeMultiCam(Structured_Light):
 
         return indexl, indexr
 
+    def find_valid_neighbor(self, inverse_map: np.ndarray, r: int, c: int, sentinel_value: int):
+        """
+        Searches the 8 neighbors of (r, c) in the inverse_map for a valid entry.
+
+        Args:
+            inverse_map: The 3D inverse map array (H', W', 2).
+            r: Row index in the inverse map.
+            c: Column index in the inverse map.
+            sentinel_value: The value indicating an invalid/unmapped entry.
+
+        Returns:
+            The [col, row] ndarray of the first valid neighbor found, or None.
+        """
+        map_rows, map_cols = inverse_map.shape[:2]
+        # Define neighbor offsets (8-connectivity, order can matter if multiple are valid)
+        # Check immediate neighbors first
+        neighbor_offsets = [
+            (-1, 0), (1, 0), (0, -1), (0, 1), # Cardinal
+            (-1, -1), (-1, 1), (1, -1), (1, 1)  # Diagonal
+        ]
+
+        for dr, dc in neighbor_offsets:
+            nr, nc = r + dr, c + dc
+            # Check bounds
+            if 0 <= nr < map_rows and 0 <= nc < map_cols:
+                neighbor_val = inverse_map[nr, nc]
+                # Check if valid (checking row or col is sufficient if [sentinel, sentinel] is used)
+                if neighbor_val[1] != sentinel_value: # Assuming checking row is enough
+                    return neighbor_val # Return the [col, row] pair
+        return None # No valid neighbor found
+
+    def process_frames_optimized(self,
+                                inverse_left_cam: np.ndarray,
+                                inverse_right_cam: np.ndarray,
+                                shape_left,
+                                shape_right,
+                                sentinel_value: int = 0) :
+        """
+        Processes inverse maps to find corresponding flattened indices in original frames,
+        using neighbor search for missing correspondences, optimized with NumPy.
+
+        Args:
+            inverse_left_cam: Inverse map for the left camera [col, row].
+            inverse_right_cam: Inverse map for the right camera [col, row].
+            shape_left: Original shape (H, W) of the left image.
+            shape_right: Original shape (H, W) of the right image.
+            sentinel_value: Value indicating unmapped points in the inverse maps.
+
+        Returns:
+            A tuple containing:
+            - final_indexl: NumPy array of flattened indices for the left original image.
+            - final_indexr: NumPy array of flattened indices for the right original image.
+        """
+        shape_invers_left = inverse_left_cam.shape
+        shape_invers_right = inverse_right_cam.shape
+
+        # Determine the common region to process based on inverse map dimensions
+        min_rows = min(shape_invers_left[0], shape_invers_right[0])
+        min_cols = min(shape_invers_left[1], shape_invers_right[1])
+
+        # --- Crop maps to the common region ---
+        left_map_crop = inverse_left_cam[:min_rows, :min_cols]
+        right_map_crop = inverse_right_cam[:min_rows, :min_cols]
+
+        # --- Extract original column and row, handling the sentinel ---
+        # Shape: (min_rows, min_cols)
+        left_orig_col = left_map_crop[..., 0]
+        left_orig_row = left_map_crop[..., 1]
+        right_orig_col = right_map_crop[..., 0]
+        right_orig_row = right_map_crop[..., 1]
+
+        # --- Create masks for valid entries ---
+        # Valid if the row value is not the sentinel (assuming [sentinel, sentinel] for invalid)
+        valid_left_mask = left_orig_row != sentinel_value
+        valid_right_mask = right_orig_row != sentinel_value
+
+        # --- Case 1: Both left and right mappings are valid ---
+        both_valid_mask = valid_left_mask & valid_right_mask
+
+        # Extract original coordinates where both are valid
+        left_orig_row_bv = left_orig_row[both_valid_mask]
+        left_orig_col_bv = left_orig_col[both_valid_mask]
+        right_orig_row_bv = right_orig_row[both_valid_mask]
+        right_orig_col_bv = right_orig_col[both_valid_mask]
+
+        # Calculate flattened indices for these points
+        width_left = shape_left[1]
+        width_right = shape_right[1]
+
+        flat_indices_l_bv = left_orig_row_bv * width_left + left_orig_col_bv
+        flat_indices_r_bv = right_orig_row_bv * width_right + right_orig_col_bv
+
+        # --- Cases 2 & 3: One mapping valid, requires neighbor search for the other ---
+        # Initialize lists to store results from neighbor searches
+        indexl_neighbor = []
+        indexr_neighbor = []
+
+        # Case 2: Left valid, Right invalid -> Search neighbors in Right map
+        left_only_mask = valid_left_mask & ~valid_right_mask
+        rows_lo, cols_lo = np.where(left_only_mask) # Coordinates (ii, jj) needing search
+
+        for r, c in zip(rows_lo, cols_lo):
+            leftframe = left_map_crop[r, c] # This one is valid by definition
+            # Find a valid neighbor in the *right* map at the *same* (r, c) location
+            rightframe_neighbor = self.find_valid_neighbor(inverse_right_cam, r, c, sentinel_value) # Use full map for search
+            if rightframe_neighbor is not None:
+                # Calculate flattened indices using original left and found right
+                indexl_neighbor.append(leftframe[1] * width_left + leftframe[0])
+                indexr_neighbor.append(rightframe_neighbor[1] * width_right + rightframe_neighbor[0])
+
+        # Case 3: Right valid, Left invalid -> Search neighbors in Left map
+        right_only_mask = ~valid_left_mask & valid_right_mask
+        rows_ro, cols_ro = np.where(right_only_mask) # Coordinates (ii, jj) needing search
+
+        for r, c in zip(rows_ro, cols_ro):
+            rightframe = right_map_crop[r, c] # This one is valid by definition
+            # Find a valid neighbor in the *left* map at the *same* (r, c) location
+            leftframe_neighbor = self.find_valid_neighbor(inverse_left_cam, r, c, sentinel_value) # Use full map for search
+            if leftframe_neighbor is not None:
+                 # Calculate flattened indices using found left and original right
+                indexl_neighbor.append(leftframe_neighbor[1] * width_left + leftframe_neighbor[0])
+                indexr_neighbor.append(rightframe[1] * width_right + rightframe[0])
+
+        # --- Combine results ---
+        # Convert neighbor search results to numpy arrays
+        indexl_neighbor_arr = np.array(indexl_neighbor, dtype=flat_indices_l_bv.dtype)
+        indexr_neighbor_arr = np.array(indexr_neighbor, dtype=flat_indices_r_bv.dtype)
+
+        # Concatenate results from direct matches and neighbor searches
+        final_indexl = np.concatenate((flat_indices_l_bv, indexl_neighbor_arr))
+        final_indexr = np.concatenate((flat_indices_r_bv, indexr_neighbor_arr))
+
+        return final_indexl, final_indexr
     def find_non_zero_neighbor(self, frame, ii, jj):
         neighbors = [(ii, jj + 1), (ii, jj - 1), (ii + 1, jj), (ii - 1, jj)]
         for ni, nj in neighbors:
@@ -261,8 +405,35 @@ class GrayCodeMultiCam(Structured_Light):
         """
         # Implement triangulation logic here
         logging.info('finding correspondences...')
-        inverse_left_cam, inverse_right_cam = self.find_correspondence()
-        indexl, indexr = self.process_frames2(inverse_left_cam, inverse_right_cam,self.array_hor_l_masked.shape,self.array_hor_r_masked.shape )
+        inverse_left_cam, inverse_right_cam = self.find_correspondence_optimized()
+        logging.info('finding correspondences cpp..')
+        # Call the C++ function
+        inverse_matrix_left_cam, inverse_matrix_right_cam = correspondence.find_correspondence_optimized(
+            self.left_vertical_decoded_image,
+            self.left_horizontal_decoded_image,
+            self.right_vertical_decoded_image,
+            self.right_horizontal_decoded_image
+        )
+
+        #logging.info('processing...')
+
+        #indexl, indexr = self.process_frames_optimized(inverse_left_cam, inverse_right_cam,self.left_horizontal_decoded_image.shape,self.right_horizontal_decoded_image.shape )
+        #logging.info('processing numba...')
+
+        indexl, indexr = self.process_frames_numba(inverse_left_cam, inverse_right_cam,self.left_horizontal_decoded_image.shape,self.right_horizontal_decoded_image.shape )
+
+
+        #logging.info('processing cpp...')
+
+        #indexl, indexr = process_frames_module.process_frames(inverse_left_cam, inverse_right_cam, self.left_horizontal_decoded_image.shape[0], self.left_horizontal_decoded_image.shape[0],
+         #                                    0)
+
+
+
+
+
+        logging.info('line_filter...')
+
         #width = self.array_hor_l_masked.shape[1]
         #indices_1dl = [v * width + u for u, v in inverse_left_cam.ravel()]
         # convert list to numpy array
@@ -345,6 +516,87 @@ class GrayCodeMultiCam(Structured_Light):
 
 
         pass
+
+
+    def _create_inverse_map(self, vertical_decoded: np.ndarray, horizontal_decoded: np.ndarray, sentinel_value: int = 0) -> np.ndarray:
+        """
+        Creates an inverse mapping from decoded coordinates to original image coordinates.
+
+        Args:
+            vertical_decoded: 2D array where each element is the decoded row index.
+            horizontal_decoded: 2D array where each element is the decoded column index.
+            sentinel_value: Value to fill unmapped locations in the inverse map.
+
+        Returns:
+            A 3D numpy array where inverse_map[decoded_row, decoded_col] = [original_col, original_row].
+            Unmapped locations will have [sentinel_value, sentinel_value].
+        """
+        if vertical_decoded.shape != horizontal_decoded.shape:
+            raise ValueError("Vertical and horizontal decoded image shapes must match.")
+        if vertical_decoded.ndim != 2:
+             raise ValueError("Input arrays must be 2-dimensional.")
+
+        original_height, original_width = vertical_decoded.shape
+
+        # Determine the required size of the inverse map arrays
+        # Add a small epsilon before casting to int to handle potential float inputs safely,
+        # although indices should ideally be integers already. Handle potential empty arrays.
+        max_value_vert = np.amax(vertical_decoded) if vertical_decoded.size > 0 else 0
+        max_value_hor = np.amax(horizontal_decoded) if horizontal_decoded.size > 0 else 0
+
+        # Output map dimensions (add 1 because indices are 0-based)
+        map_height = int(max_value_vert) + 1
+        map_width = int(max_value_hor) + 1
+
+        # Initialize inverse map arrays with the sentinel value
+        # Using int32 is often sufficient for indices and saves memory
+        inverse_array_row = np.full((map_height, map_width), sentinel_value, dtype=np.int32)
+        inverse_array_column = np.full((map_height, map_width), sentinel_value, dtype=np.int32)
+
+        # Create arrays representing the original (i, j) coordinates
+        # Using broadcasting avoids explicit meshgrid for assignment
+        original_rows_i = np.arange(original_height, dtype=np.int32)[:, None] # Shape (H, 1)
+        original_cols_j = np.arange(original_width, dtype=np.int32)         # Shape (W,)
+
+        # Use advanced indexing to populate the inverse maps
+        # vertical_decoded and horizontal_decoded act as coordinate pairs for the target arrays
+        # original_rows_i broadcasts to (H, W), assigning original 'i' (row)
+        # original_cols_j broadcasts to (H, W), assigning original 'j' (column)
+        # Only perform assignment if there are values to map
+        if vertical_decoded.size > 0:
+            inverse_array_row[vertical_decoded, horizontal_decoded] = original_rows_i
+            inverse_array_column[vertical_decoded, horizontal_decoded] = original_cols_j
+
+        # Stack the column and row arrays to get (col, row) pairs at each location
+        # Shape: (map_height, map_width, 2)
+        # Stacking column first matches the original code's temp_matrix structure
+        inverse_map = np.stack((inverse_array_column, inverse_array_row), axis=2)
+
+        return inverse_map
+
+    def find_correspondence_optimized(self):
+        """
+        Finds the inverse mapping for left and right camera decoded images.
+
+        Returns:
+            A tuple containing:
+            - inverse_matrix_left_cam: Map for the left camera.
+            - inverse_matrix_right_cam: Map for the right camera.
+            Each map is a 3D array where map[decoded_row, decoded_col] = [original_col, original_row].
+        """
+        # Process left camera
+        inverse_matrix_left_cam = self._create_inverse_map(
+            self.left_vertical_decoded_image,
+            self.left_horizontal_decoded_image
+        )
+
+        # Process right camera
+        inverse_matrix_right_cam = self._create_inverse_map(
+            self.right_vertical_decoded_image,
+            self.right_horizontal_decoded_image
+        )
+
+        return inverse_matrix_left_cam, inverse_matrix_right_cam
 
     def find_correspondence(self):
         ## Find max values to create empty (0) matrices to use

@@ -5,6 +5,7 @@ import os
 import matplotlib.pyplot as plt
 from PyCamCalib.core.calibration import *
 from Classes.Multicam import *
+from Classes.IntrinsicCapture.intrinsic_capture import *
 
 class Stereo:
     """
@@ -30,7 +31,6 @@ class Stereo:
 
     def load_cams_from_file(self, filename):
         self.cameras.load_cams_from_file(filename)
-
     def transform_rays_to_world_coordinates(self):
         """
         \brief Transforms rays to world coordinates using the corresponding extrinsic matrices.
@@ -38,12 +38,41 @@ class Stereo:
         \return A list of rays transformed to world coordinates.
         """
         pass
-    def capture_intrinsic_calibration_images(self):
+    def capture_extrinsic_calibration_images(self,EXRINSIC_CALIBRATION_DATA_DIRECTORY = None,numberofimages = 40):
+        # if extrinsic calibration dir does not exist
+        if EXRINSIC_CALIBRATION_DATA_DIRECTORY is None:
+            EXRINSIC_CALIBRATION_DATA_DIRECTORY = self.EXRINSIC_CALIBRATION_DATA_DIRECTORY
+        else:
+            self.EXRINSIC_CALIBRATION_DATA_DIRECTORY = EXRINSIC_CALIBRATION_DATA_DIRECTORY
+        if not os.path.exists(EXRINSIC_CALIBRATION_DATA_DIRECTORY):
+            os.makedirs(EXRINSIC_CALIBRATION_DATA_DIRECTORY)
+        for counter in range(numberofimages):
+            print('capturing image ' + str(counter) +' of '  + str(numberofimages))
+            extrinsic_calibration_capture(EXRINSIC_CALIBRATION_DATA_DIRECTORY, counter, self.cameras, identifier='black')
+
+    def capture_intrinsic_calibration_images(self,INTRINSIC_CALIBRATION_DATA_DIRECTORY = None,numberofimages = 40):
         """
         \brief Captures images for intrinsic calibration of the stereo camera system.
         """
         #cameras = self.cameras
         #self.set_exposure_time(cameras,self.exposure_intrinsic)
+        if INTRINSIC_CALIBRATION_DATA_DIRECTORY is None:
+            INTRINSIC_CALIBRATION_DATA_DIRECTORY = self.INTRINSIC_CALIBRATION_DATA_DIRECTORY
+        else:
+            self.INTRINSIC_CALIBRATION_DATA_DIRECTORY = INTRINSIC_CALIBRATION_DATA_DIRECTORY
+
+        try:
+            # Your code that might raise an exception
+            intrinsic_calibration_capture(INTRINSIC_CALIBRATION_DATA_DIRECTORY, self.cameras, identifier=['L', 'R'],
+                                          numberofimages=numberofimages)
+        except Exception as e:
+            # Print the last error message
+            import warnings
+
+            print(f"An error occurred: {e}")
+            warnings.warn(f"An error occurred: {e}", RuntimeWarning)
+            print("Closing cameras to avoid memory leaks after error.")
+            self.cameras.Close()
         pass
     def calibrate_camera_intrinsics(self,INTRINSIC_CALIBRATION_DATA_DIRECTORY = None):
         """
@@ -241,6 +270,22 @@ class Stereo:
             return np.squeeze(image_array)
         else:
             raise ValueError("No images found in the provided files with the key format.")
+    def Close(self):
+        pass
+
+        if hasattr(self.cameras, 'Close'):
+            self.cameras.Close()
+            print('Projector: Closed all cameras.')
+            self.cameras = []
+    def __del__(self):
+        # check if cameras have Close function
+        print('Destructor called')
+        if self.cameras is None:
+            return
+        if hasattr(self.cameras, 'Close'):
+            print('Destructor: Closed all cameras.')
+            self.cameras.Close()
+            self.cameras = []
 
 
 if __name__ == "__main__":

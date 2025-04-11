@@ -2,11 +2,11 @@
     "cameras": [
         {
             "dev_id": "1AB22800147A",
-            "exposure": 5000
+            "exposure": 8000
         },
         {
             "dev_id": "1AB22800147B",
-            "exposure": 5000
+            "exposure": 8000
         }
     ]
 }

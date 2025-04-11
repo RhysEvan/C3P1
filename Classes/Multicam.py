@@ -70,7 +70,7 @@ class MultiCam:
 
 
     def GetFrame(self):
-        print("MultiCam: Capturing frame...")
+        #print("MultiCam: Capturing frame...")
         idx = 0
         pil_images = []
 
@@ -91,15 +91,24 @@ class MultiCam:
         self.frame_count += 1
         return pil_images
 
+    def __len__(self):
+        return len(self.cameras)
+    def __iter__(self):
+        return iter(self.cameras)
+
     def Release(self):
         print("MultiCam: Releasing resources.")
+        self.Close()
         pass
+
 
     #write a destructor
     def Close(self):
-        for cam in self.cameras:
-            cam.Close()
-        self.cameras = []
+
+        if self.cameras is not None:
+            for cam in self.cameras:
+                cam.Close()
+            self.cameras = []
         print('MultiCam: Closed all cameras.')
     def __del__(self):
         print("MultiCam: Destructor called.")
